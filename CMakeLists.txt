@@ -69,5 +69,5 @@ add_custom_target(docs ALL DEPENDS ${DOCS_PAGE})
 
 add_test(NAME page
   COMMAND ${CMAKE_COMMAND} -DPAGE=${DOCS_PAGE}
-          "-DEXPECTED=<h2>cbor::lazy</h2>;<h2>cbor::lazy::view</h2>;static std::expected&lt;lazy, error&gt; view(;<h2>cbor::at_path</h2>;<h2>cbor::error</h2>;enum class error"
+          "-DEXPECTED=<h2>cbor::lazy</h2>;<h2>cbor::lazy::view</h2>;<h2>Errors</h2>;static std::expected&lt;lazy, error&gt; view(;<h2>cbor::at_path</h2>;<h2>cbor::error</h2>;enum class error"
           -P ${CMAKE_SOURCE_DIR}/test/check_page.cmake)

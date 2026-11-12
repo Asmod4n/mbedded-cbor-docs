@@ -48,8 +48,18 @@ def children($file; $scope; $grp; $acc):
 def run: . as $ns | [ $ns | children(($ns.loc.file); "cbor"; ""; "public") | .[] ];
 [ inputs | select(.kind == "NamespaceDecl") | run ] | add
 | map(. + {sig: ((srcof(.file)) as $s | (if (.kind | IN("EnumDecl", "CXXRecordDecl", "ClassTemplateDecl")) then ($s[.b:.whole] | (index("{") // length) as $i | .[0:$i]) elif .b >= 0 and .e > .b then $s[.b:.e] else "" end) | trim)})
-| (map(.errors | length) | max) as $ne | (map(.example | length) | max) as $nx | (map(.snippets | length) | max) as $ns | (map(.sees | length) | max) as $nsee
-| {title: "mbedded-cbor", maxima: {errors: $ne, example: $nx, snippets: $ns, sees: $nsee},
-   entries: map({kind, scope, name, group, sig, brief,
-                 errors: (.errors | pad($ne; {names: "", on: false})), example: (.example | pad($nx; {line: "", on: false})),
-                 snippets: (.snippets | pad($ns; {line: "", on: false})), sees: (.sees | pad($nsee; {line: "", on: false}))})}
+| def unique_in_order: reduce .[] as $x ([]; if index([$x]) then . else . + [$x] end);
+  def first_pair: ([ .[] | select(.line | startswith("call:")) ] | first) as $c
+    | ([ .[] | select(.line | startswith("result:")) ] | first) as $r
+    | {call: (($c.line // "") | sub("^call:\\s*"; "")), result: (($r.line // "") | sub("^result:\\s*"; ""))};
+  . as $all
+  | ($all | map(.scope + "::" + .name) | unique_in_order) as $keys
+  | {title: "mbedded-cbor",
+     entries: [ $keys[] as $k | ($all | map(select(.scope + "::" + .name == $k))) as $g
+                | ($g | map(.example | first_pair) | map(select(.call != "")) | first // {call: "", result: ""}) as $p
+                | {kind: $g[0].kind, scope: $g[0].scope, name: $g[0].name, group: $g[0].group,
+                   sigs: ($g | map(.sig) | map(select(. != "")) | unique_in_order | join("\n")),
+                   brief: ($g | map(.brief) | map(select(. != "")) | first // ""),
+                   call: $p.call, result: $p.result} ],
+     errors: [ $keys | map(select(. != null)) | .[] as $k | ($all | map(select(.scope + "::" + .name == $k)))
+               | map(.errors[] | .names) | unique_in_order | select(length > 0) | {scope: $k, names: join("\n")} ]}

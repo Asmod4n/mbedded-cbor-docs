@@ -20,11 +20,12 @@ constexpr auto make()
 constexpr auto page = mustache::static_page_of<
     "<h1>{{title}}</h1>\n"
     "{{#entries}}<h2>{{scope}}::{{name}}</h2>\n"
-    "<pre>{{sig}}</pre>\n"
+    "<pre>{{sigs}}</pre>\n"
     "<p>{{brief}}</p>\n"
-    "{{#errors}}{{#on}}<li>{{names}}</li>\n{{/on}}{{/errors}}"
-    "{{#example}}{{#on}}<code>{{line}}</code>\n{{/on}}{{/example}}"
-    "{{/entries}}",
+    "{{#call}}<pre>&gt; {{call}}\n{{result}}</pre>\n{{/call}}"
+    "{{/entries}}"
+    "<h2>Errors</h2>\n"
+    "{{#errors}}<h3>{{scope}}</h3>\n<pre>{{names}}</pre>\n{{/errors}}",
     make>;
 
 void write_file(const std::string &path, const std::string_view text)
