@@ -10,10 +10,6 @@
 #include <string_view>
 #include <system_error>
 
-#ifndef DOCS_CLASS_NAME
-#error the name of the class is set by CMake
-#endif
-
 namespace {
 
 constexpr auto make()
@@ -23,8 +19,8 @@ constexpr auto make()
 
 constexpr auto page = mustache::static_page_of<
     "<h1>{{title}}</h1>\n"
-    "{{#entries}}<h2>{{name}}</h2>\n"
-    "<pre>{{signature}}</pre>\n"
+    "{{#entries}}<h2>{{scope}}::{{name}}</h2>\n"
+    "<pre>{{sig}}</pre>\n"
     "<p>{{brief}}</p>\n"
     "{{#errors}}{{#on}}<li>{{names}}</li>\n{{/on}}{{/errors}}"
     "{{#example}}{{#on}}<code>{{line}}</code>\n{{/on}}{{/example}}"
@@ -48,7 +44,7 @@ int main(const int argc, const char *const *const argv)
         return 2;
     }
     try {
-        write_file(std::string(argv[1]) + "/" DOCS_CLASS_NAME ".html", std::string_view(page.data()));
+        write_file(std::string(argv[1]) + "/index.html", std::string_view(page.data()));
     }
     catch (const std::system_error &e) {
         std::fprintf(stderr, "write_pages: %s\n", e.what());
