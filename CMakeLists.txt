@@ -17,7 +17,6 @@ FetchContent_MakeAvailable(mbedded_cbor mustache)
 find_package(simdjson REQUIRED)
 find_program(DOCS_CLANG NAMES clang++-23 clang++ REQUIRED)
 find_program(DOCS_JQ jq REQUIRED)
-find_program(DOCS_OBJCOPY objcopy REQUIRED)
 
 set(DOCS_CONSTEXPR_OPS_LIMIT 4000000000 CACHE STRING "the limit of the operations of a constant evaluation")
 set(DOCS_CONSTEXPR_LOOP_LIMIT 1000000000 CACHE STRING "the limit of the iterations of a loop of a constant evaluation")
@@ -47,19 +46,19 @@ add_custom_command(
   COMMENT "The JSON of the comments as a header"
   VERBATIM)
 
-add_library(page OBJECT src/page.cpp ${DOCS_HPP})
-target_include_directories(page PRIVATE ${CMAKE_BINARY_DIR} ${mustache_SOURCE_DIR}/include)
-target_compile_features(page PRIVATE cxx_std_26)
-target_compile_definitions(page PRIVATE SIMDJSON_STATIC_REFLECTION=1)
-target_compile_options(page PRIVATE -freflection -Wall -Wextra -Werror
+add_executable(write_pages src/write_pages.cpp ${DOCS_HPP})
+target_include_directories(write_pages PRIVATE ${CMAKE_BINARY_DIR} ${mustache_SOURCE_DIR}/include)
+target_compile_features(write_pages PRIVATE cxx_std_26)
+target_compile_definitions(write_pages PRIVATE SIMDJSON_STATIC_REFLECTION=1 DOCS_CLASS_NAME="${DOCS_CLASS}")
+target_compile_options(write_pages PRIVATE -freflection -Wall -Wextra -Werror
   -fconstexpr-ops-limit=${DOCS_CONSTEXPR_OPS_LIMIT}
   -fconstexpr-loop-limit=${DOCS_CONSTEXPR_LOOP_LIMIT})
-target_link_libraries(page PRIVATE simdjson::simdjson)
+target_link_libraries(write_pages PRIVATE simdjson::simdjson)
 
 add_custom_command(
   OUTPUT ${DOCS_PAGE}
-  COMMAND ${DOCS_OBJCOPY} -O binary --only-section=.page_html $<TARGET_OBJECTS:page> ${DOCS_PAGE}
-  DEPENDS page
+  COMMAND write_pages ${CMAKE_BINARY_DIR}
+  DEPENDS write_pages
   COMMENT "The page of cbor::${DOCS_CLASS}"
   VERBATIM)
 add_custom_target(docs ALL DEPENDS ${DOCS_PAGE})

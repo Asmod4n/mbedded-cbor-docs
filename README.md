@@ -6,8 +6,8 @@ class and a man page for each group.
 clang writes the AST of the headers as JSON. jq takes the comments and the
 text of each declaration out of it and writes them as a JSON literal into a
 header. A C++26 program reads that literal at compile time with simdjson and
-renders the page with mbedded-mustache. The page leaves the compiler as an
-array in the object file, and objcopy writes it to a file.
+renders the page with mbedded-mustache. The page is an array in the program.
+The program write_pages writes it to a file.
 
 CMake fetches the current mbedded-cbor from main.
 
