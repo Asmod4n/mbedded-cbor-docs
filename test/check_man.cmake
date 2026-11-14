@@ -1,0 +1,12 @@
+# mandoc -T lint -W warning prints nothing for each page, and each name of the file EXPECTED stands as a page.
+file(GLOB pages ${MAN_DIR}/*.3)
+execute_process(COMMAND ${MANDOC} -T lint -W warning ${pages} OUTPUT_VARIABLE out ERROR_VARIABLE err RESULT_VARIABLE status)
+if(NOT "${out}${err}" STREQUAL "")
+  message(FATAL_ERROR "mandoc -T lint -W warning:\n${out}${err}")
+endif()
+file(STRINGS ${EXPECTED} names)
+foreach(name IN LISTS names)
+  if(NOT EXISTS ${MAN_DIR}/${name})
+    message(FATAL_ERROR "the man page ${name} is missing")
+  endif()
+endforeach()

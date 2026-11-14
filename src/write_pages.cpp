@@ -2,6 +2,7 @@
 
 #include <cerrno>
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <string>
 #include <string_view>
@@ -25,9 +26,19 @@ int main(const int argc, const char *const *const argv)
         std::fputs("usage: write_pages <output directory>\n", stderr);
         return 2;
     }
+    const std::string directory = argv[1];
     try {
-        for (const auto &entry : pages)
-            write_file(std::string(argv[1]) + "/" + std::string(entry.name) + ".html", entry.make());
+        std::filesystem::create_directories(directory + "/man3");
+        for (const auto &entry : pages) {
+            write_file(directory + "/" + std::string(entry.name) + ".html", entry.make());
+            const auto man = entry.make_man();
+            if (!man) {
+                std::fprintf(stderr, "write_pages: page %s: %s\n", std::string(entry.name).c_str(), man.error().c_str());
+                return 1;
+            }
+            for (const auto &file : *man)
+                write_file(directory + "/man3/" + file.name, file.text);
+        }
     }
     catch (const std::system_error &e) {
         std::fprintf(stderr, "write_pages: %s\n", e.what());

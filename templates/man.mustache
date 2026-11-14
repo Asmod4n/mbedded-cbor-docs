@@ -1,0 +1,20 @@
+{{#is_file}}.TH "{{a}}" 3 "{{c}}" "{{d}}"
+{{/is_file}}{{#is_sh}}.SH "{{a}}"
+{{/is_sh}}{{#is_name}}{{a}} \- {{b}}
+{{/is_name}}{{#is_nf}}.nf
+{{/is_nf}}{{#is_fi}}.fi
+{{/is_fi}}{{#is_include}}.B {{a}}
+{{/is_include}}{{#is_sp}}.sp
+{{/is_sp}}{{#is_sig}}{{a}}\fB{{b}}\fP{{c}}
+{{/is_sig}}{{#is_line}}{{a}}
+{{/is_line}}{{#is_text}}{{a}}
+{{/is_text}}{{#is_pp}}.PP
+{{a}}
+{{/is_pp}}{{#is_tp}}.TP
+\fB{{a}}\fP
+{{b}}
+{{/is_tp}}{{#is_ex}}.EX
+{{a}}
+.EE
+{{/is_ex}}{{#is_see}}\fB{{a}}\fP
+{{/is_see}}

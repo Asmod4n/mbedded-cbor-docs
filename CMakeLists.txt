@@ -3,6 +3,7 @@ project(mbedded-cbor-docs LANGUAGES CXX)
 
 include(FetchContent)
 include(CTest)
+include(GNUInstallDirs)
 
 FetchContent_Declare(mbedded_cbor
   GIT_REPOSITORY https://github.com/Asmod4n/mbedded-cbor.git
@@ -54,6 +55,16 @@ add_custom_command(
   COMMENT "The JSON of the comments"
   VERBATIM)
 
+execute_process(COMMAND git -C ${mbedded_cbor_SOURCE_DIR} log -1 --format=%cs OUTPUT_VARIABLE DOCS_COMMIT_DATE OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
+execute_process(COMMAND git -C ${mbedded_cbor_SOURCE_DIR} log -1 --format=%h OUTPUT_VARIABLE DOCS_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
+file(READ ${mbedded_cbor_SOURCE_DIR}/CMakeLists.txt DOCS_CBOR_CMAKE)
+string(REGEX MATCH "project\\(mbedded-cbor VERSION ([0-9.]+)" DOCS_CBOR_PROJECT "${DOCS_CBOR_CMAKE}")
+set(DOCS_CBOR_VERSION ${CMAKE_MATCH_1})
+if(NOT DOCS_CBOR_VERSION)
+  message(FATAL_ERROR "the version of mbedded-cbor is not in its project()")
+endif()
+set(DOCS_MAN_SOURCE "mbedded-cbor ${DOCS_CBOR_VERSION} ${DOCS_COMMIT}")
+
 file(READ ${CMAKE_SOURCE_DIR}/groups.json DOCS_GROUPS_JSON)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/groups.json)
 set(DOCS_PAGES index)
@@ -64,7 +75,7 @@ foreach(i RANGE ${DOCS_LAST_GROUP})
   list(APPEND DOCS_PAGES ${group_name})
 endforeach()
 
-set(DOCS_TEMPLATES head foot group errors index)
+set(DOCS_TEMPLATES head foot group errors index man)
 set(DOCS_TEMPLATES_HPP ${CMAKE_BINARY_DIR}/templates.hpp)
 set(templates_text "#pragma once\n#include <mustache/mustache.hpp>\n")
 foreach(template IN LISTS DOCS_TEMPLATES)
@@ -74,15 +85,15 @@ foreach(template IN LISTS DOCS_TEMPLATES)
 endforeach()
 file(GENERATE OUTPUT ${DOCS_TEMPLATES_HPP} CONTENT "${templates_text}")
 
-set(pages_text "#pragma once\n#include <string_view>\n")
+set(pages_text "#pragma once\n#include \"man_file.hpp\"\n#include <expected>\n#include <string_view>\n#include <vector>\n")
 foreach(page IN LISTS DOCS_PAGES)
   string(MAKE_C_IDENTIFIER ${page} page_id)
-  string(APPEND pages_text "std::string_view page_${page_id}();\n")
+  string(APPEND pages_text "std::string_view page_${page_id}();\nstd::expected<std::vector<man_file>, std::string> man_${page_id}();\n")
 endforeach()
-string(APPEND pages_text "struct page_function {\n    std::string_view name;\n    std::string_view (*make)();\n};\ninline constexpr page_function pages[] = {\n")
+string(APPEND pages_text "struct page_function {\n    std::string_view name;\n    std::string_view (*make)();\n    std::expected<std::vector<man_file>, std::string> (*make_man)();\n};\ninline constexpr page_function pages[] = {\n")
 foreach(page IN LISTS DOCS_PAGES)
   string(MAKE_C_IDENTIFIER ${page} page_id)
-  string(APPEND pages_text "    {\"${page}\", page_${page_id}},\n")
+  string(APPEND pages_text "    {\"${page}\", page_${page_id}, man_${page_id}},\n")
 endforeach()
 string(APPEND pages_text "};\n")
 file(GENERATE OUTPUT ${CMAKE_BINARY_DIR}/pages.hpp CONTENT "${pages_text}")
@@ -94,9 +105,9 @@ foreach(page IN LISTS DOCS_PAGES)
   file(MAKE_DIRECTORY ${page_dir})
   add_custom_command(
     OUTPUT ${page_dir}/data.json
-    COMMAND ${DOCS_JQ} --arg page ${page} --slurpfile groups ${CMAKE_SOURCE_DIR}/groups.json ${DOCS_TEST_ARGS}
+    COMMAND ${DOCS_JQ} -L ${CMAKE_SOURCE_DIR}/jq --arg date ${DOCS_COMMIT_DATE} --arg source "${DOCS_MAN_SOURCE}" --arg page ${page} --slurpfile groups ${CMAKE_SOURCE_DIR}/groups.json ${DOCS_TEST_ARGS}
             -f ${CMAKE_SOURCE_DIR}/jq/page.jq ${DOCS_JSON} > ${page_dir}/data.json
-    DEPENDS ${DOCS_JSON} ${CMAKE_SOURCE_DIR}/jq/page.jq ${CMAKE_SOURCE_DIR}/groups.json
+    DEPENDS ${DOCS_JSON} ${CMAKE_SOURCE_DIR}/jq/page.jq ${CMAKE_SOURCE_DIR}/jq/man.jq ${CMAKE_SOURCE_DIR}/groups.json
     COMMENT "The data of the page ${page}"
     VERBATIM)
   add_custom_command(
@@ -111,9 +122,9 @@ foreach(page IN LISTS DOCS_PAGES)
     set(page_template template_group)
   endif()
   add_library(page_${page_id} OBJECT src/page.cpp ${page_dir}/data.hpp)
-  target_include_directories(page_${page_id} PRIVATE ${page_dir} ${CMAKE_BINARY_DIR} ${mustache_SOURCE_DIR}/include)
+  target_include_directories(page_${page_id} PRIVATE ${page_dir} ${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR}/src ${mustache_SOURCE_DIR}/include)
   target_compile_features(page_${page_id} PRIVATE cxx_std_26)
-  target_compile_definitions(page_${page_id} PRIVATE SIMDJSON_STATIC_REFLECTION=1 PAGE_FUNCTION=page_${page_id} PAGE_TEMPLATE=${page_template})
+  target_compile_definitions(page_${page_id} PRIVATE SIMDJSON_STATIC_REFLECTION=1 PAGE_FUNCTION=page_${page_id} PAGE_MAN_FUNCTION=man_${page_id} PAGE_TEMPLATE=${page_template})
   target_compile_options(page_${page_id} PRIVATE -freflection -Wall -Wextra -Werror
     -fconstexpr-ops-limit=${DOCS_CONSTEXPR_OPS_LIMIT}
     -fconstexpr-loop-limit=${DOCS_CONSTEXPR_LOOP_LIMIT})
@@ -122,10 +133,11 @@ foreach(page IN LISTS DOCS_PAGES)
 endforeach()
 
 add_executable(write_pages src/write_pages.cpp ${DOCS_OBJECTS})
-target_include_directories(write_pages PRIVATE ${CMAKE_BINARY_DIR})
+target_include_directories(write_pages PRIVATE ${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR}/src ${mustache_SOURCE_DIR}/include)
 target_compile_features(write_pages PRIVATE cxx_std_26)
 target_compile_options(write_pages PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(write_pages PRIVATE simdjson::simdjson)
+
 
 set(DOCS_OUTPUT_DIR ${CMAKE_BINARY_DIR}/site)
 set(DOCS_PAGE_FILES)
@@ -163,4 +175,29 @@ foreach(case IN ITEMS overloads constructor macros comment)
 endforeach()
 add_test(NAME jq_nonascii
   COMMAND ${CMAKE_COMMAND} -DCASE=nonascii "-DMUST_FAIL_WITH=nonascii: line 5: a byte outside printable ASCII" -DCLANG=${DOCS_CLANG} -DJQ=${DOCS_JQ}
+          -DDIR=${CMAKE_SOURCE_DIR}/test/jq -DOUT=${CMAKE_BINARY_DIR} -DDOCS_JQ=${CMAKE_SOURCE_DIR}/jq/docs.jq -P ${CMAKE_SOURCE_DIR}/test/jq_case.cmake)
+
+find_program(DOCS_MANDOC mandoc REQUIRED)
+add_test(NAME man_pages
+  COMMAND ${CMAKE_COMMAND} -DMANDOC=${DOCS_MANDOC} -DMAN_DIR=${DOCS_OUTPUT_DIR}/man3 -DEXPECTED=${CMAKE_SOURCE_DIR}/test/expected/man.txt
+          -P ${CMAKE_SOURCE_DIR}/test/check_man.cmake)
+
+install(DIRECTORY ${DOCS_OUTPUT_DIR}/man3/ DESTINATION ${CMAKE_INSTALL_MANDIR}/man3 FILES_MATCHING PATTERN "*.3")
+add_test(NAME man_install COMMAND ${CMAKE_COMMAND} --install ${CMAKE_BINARY_DIR} --prefix ${CMAKE_BINARY_DIR}/prefix)
+set_tests_properties(man_install PROPERTIES FIXTURES_SETUP man_prefix)
+add_test(NAME man_install_title
+  COMMAND ${CMAKE_COMMAND} -E cat ${CMAKE_BINARY_DIR}/prefix/${CMAKE_INSTALL_MANDIR}/man3/cbor::lazy.3)
+set_tests_properties(man_install_title PROPERTIES FIXTURES_REQUIRED man_prefix PASS_REGULAR_EXPRESSION "\\.TH \"cbor::lazy\" 3 ")
+
+add_executable(man_render_error test/man_render_error.cpp)
+target_include_directories(man_render_error PRIVATE ${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR}/src ${mustache_SOURCE_DIR}/include)
+target_compile_features(man_render_error PRIVATE cxx_std_26)
+target_compile_definitions(man_render_error PRIVATE SIMDJSON_STATIC_REFLECTION=1)
+target_compile_options(man_render_error PRIVATE -freflection -Wall -Wextra -Werror
+  -fconstexpr-ops-limit=${DOCS_CONSTEXPR_OPS_LIMIT} -fconstexpr-loop-limit=${DOCS_CONSTEXPR_LOOP_LIMIT})
+target_link_libraries(man_render_error PRIVATE simdjson::simdjson)
+add_test(NAME man_render_error COMMAND man_render_error)
+
+add_test(NAME jq_tab
+  COMMAND ${CMAKE_COMMAND} -DCASE=tab "-DMUST_FAIL_WITH=tab: line 4: a byte outside printable ASCII" -DCLANG=${DOCS_CLANG} -DJQ=${DOCS_JQ}
           -DDIR=${CMAKE_SOURCE_DIR}/test/jq -DOUT=${CMAKE_BINARY_DIR} -DDOCS_JQ=${CMAKE_SOURCE_DIR}/jq/docs.jq -P ${CMAKE_SOURCE_DIR}/test/jq_case.cmake)
