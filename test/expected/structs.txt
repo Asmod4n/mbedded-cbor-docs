@@ -1,0 +1,10 @@
++ <h1>structs</h1>
++ any CBOR into a C++ struct and back
++ <h2>cbor::member</h2>
++ <h2>cbor::structs</h2>
++ <h2>cbor::structs::decode</h2>
+- CBOR_ALWAYS_INLINE
+- CBOR_LIFETIMEBOUND
+- CBOR_OWNER
+- <h2>cbor::detail
+- <h2></h2>

@@ -1,0 +1,7 @@
++ <h1>mbedded-cbor</h1>
++ A header-only C++ library for CBOR (RFC 8949).
++ cbor::at_path&lt;&quot;$.user.id&quot;, int&gt;(bytes)
++ <a href="lazy.html">lazy</a>
++ <a href="schema.html">schema</a>
++ find_package(mbedded-cbor 0.9 CONFIG REQUIRED)
+- <h2></h2>

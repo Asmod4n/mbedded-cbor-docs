@@ -1,0 +1,10 @@
++ <h1>schema</h1>
++ structs as Packed CBOR, with fields at fixed offsets
++ <h2>cbor::schema</h2>
++ <h2>cbor::schema::fixed_size</h2>
++ <h2>cbor::tag</h2>
+- CBOR_ALWAYS_INLINE
+- CBOR_LIFETIMEBOUND
+- CBOR_OWNER
+- <h2>cbor::detail
+- <h2></h2>

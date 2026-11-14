@@ -1,0 +1,14 @@
++ <h1>errors</h1>
++ the error values of the library and the limits of a build
++ <h2>cbor::error</h2>
++ <h2>cbor::error_category</h2>
++ <h2>cbor::limits</h2>
+- CBOR_ALWAYS_INLINE
+- CBOR_LIFETIMEBOUND
+- CBOR_OWNER
+- <h2>cbor::detail
+- <h2></h2>
++ enum class error
++ static constexpr std::size_t string_length = CBOR_STRING_LENGTH_DEFAULT
++ <h2 id="errors-of-each-class">Errors of each class</h2>
++ <h3>cbor::lazy</h3>

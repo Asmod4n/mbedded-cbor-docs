@@ -1,7 +1,4 @@
-#include "docs.hpp"
-
-#include <mustache/mustache.hpp>
-#include <simdjson.h>
+#include "pages.hpp"
 
 #include <cerrno>
 #include <cstdio>
@@ -11,22 +8,6 @@
 #include <system_error>
 
 namespace {
-
-constexpr auto make()
-{
-    return docs_json;
-}
-
-constexpr auto page = mustache::static_page_of<
-    "<h1>{{title}}</h1>\n"
-    "{{#entries}}<h2>{{qname}}</h2>\n"
-    "<pre>{{sigs}}</pre>\n"
-    "<p>{{brief}}</p>\n"
-    "{{#example}}<pre>{{example}}</pre>\n{{/example}}"
-    "{{/entries}}"
-    "<h2>Errors</h2>\n"
-    "{{#errors}}<h3>{{scope}}</h3>\n<pre>{{names}}</pre>\n{{/errors}}",
-    make>;
 
 void write_file(const std::string &path, const std::string_view text)
 {
@@ -45,7 +26,8 @@ int main(const int argc, const char *const *const argv)
         return 2;
     }
     try {
-        write_file(std::string(argv[1]) + "/index.html", std::string_view(page.data()));
+        for (const auto &entry : pages)
+            write_file(std::string(argv[1]) + "/" + std::string(entry.name) + ".html", entry.make());
     }
     catch (const std::system_error &e) {
         std::fprintf(stderr, "write_pages: %s\n", e.what());

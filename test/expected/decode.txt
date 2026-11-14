@@ -1,0 +1,10 @@
++ <h1>decode</h1>
++ a decoded tree of CBOR and the encoder
++ <h2>cbor::item</h2>
++ <h2>cbor::encode</h2>
++ <h2>cbor::encode_iov</h2>
+- CBOR_ALWAYS_INLINE
+- CBOR_LIFETIMEBOUND
+- CBOR_OWNER
+- <h2>cbor::detail
+- <h2></h2>

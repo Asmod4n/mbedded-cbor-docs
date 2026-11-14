@@ -1,0 +1,18 @@
+{
+  "index": {
+    "title": "mbedded-cbor",
+    "brief": "A header-only C++ library for CBOR (RFC 8949).",
+    "example": "// bytes: a std::string with {\"user\": {\"id\": 42, \"name\": \"ann\"}}\nauto const id = cbor::at_path<\"$.user.id\", int>(bytes);     // 42\nauto const age = cbor::at_path<\"$.user.age\", int>(bytes);   // cbor::error::key_not_found\n\nauto const doc = cbor::lazy::adopt(std::move(bytes));\nauto const name = doc->at_path<\"$.user.name\", std::string_view>();  // \"ann\", a view into the message",
+    "install": "cmake -S mbedded-cbor -B build -DBUILD_TESTING=OFF\ncmake --install build --prefix /usr/local\n\nfind_package(mbedded-cbor 0.9 CONFIG REQUIRED)\ntarget_link_libraries(app PRIVATE mbedded-cbor::mbedded-cbor)"
+  },
+  "groups": [
+    {"name": "decode", "title": "a decoded tree of CBOR and the encoder"},
+    {"name": "errors", "title": "the error values of the library and the limits of a build"},
+    {"name": "lazy", "title": "read a CBOR message in place, step by step"},
+    {"name": "path", "title": "read a CBOR value by its JSONPath (RFC 9535)"},
+    {"name": "ref", "title": "results that hold the bytes they point into"},
+    {"name": "schema", "title": "structs as Packed CBOR, with fields at fixed offsets"},
+    {"name": "structs", "title": "any CBOR into a C++ struct and back"},
+    {"name": "tools", "title": "check, split and print CBOR bytes"}
+  ]
+}

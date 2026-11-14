@@ -1,0 +1,10 @@
++ <h1>tools</h1>
++ check, split and print CBOR bytes
++ <h2>cbor::item_size</h2>
++ <h2>cbor::sequence</h2>
++ <h2>cbor::sequence::iterator</h2>
+- CBOR_ALWAYS_INLINE
+- CBOR_LIFETIMEBOUND
+- CBOR_OWNER
+- <h2>cbor::detail
+- <h2></h2>

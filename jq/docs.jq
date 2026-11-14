@@ -49,8 +49,13 @@ def member_kinds: ["FunctionTemplateDecl", "FunctionDecl", "CXXMethodDecl", "CXX
 def srcof($file): ($file | split("/") | last | sub("\\.hpp$"; "")) as $b | ($ARGS.named["src_" + $b] // "");
 def begin_of($r): $r.begin.offset // $r.begin.expansionLoc.offset // -1;
 def end_of($r): ($r.end.offset // $r.end.expansionLoc.offset // -1) + ($r.end.tokLen // $r.end.expansionLoc.tokLen // 1);
-def fullcomments: [.. | objects | select(.kind == "FullComment")] | length;
+def comment_count($inherited): ((.inner // []) | any(.[]; .kind == "FullComment")) as $own
+  | (if $own and ($inherited | not) then 1 else 0 end) as $here
+  | ($own and (.kind | IN(template_kinds[]))) as $pass
+  | $here + ([ (.inner // [])[] | select(.kind != "FullComment" and .kind != "ClassTemplateSpecializationDecl") | comment_count($pass) ] | add // 0);
+def fullcomments: comment_count(false);
 def skipped_of($scope; $why): (fullcomments) as $n | if $n == 0 then [] else [{scope: $scope, name: (.name // ""), why: $why, n: $n}] end;
+def inside_entry($scope): ((fullcomments) - 1) as $n | if $n <= 0 then [] else [{scope: $scope, name: (.name // ""), why: "comment inside an entry", n: $n}] end;
 def entry($file; $scope; $grp): . as $d
   | ($d | templated) as $t
   | {kind: $d.kind, scope: $scope, name: (($t.name // $d.name // "") | plain_name), file: ($file | split("/") | last),
@@ -61,7 +66,7 @@ def entry($file; $scope; $grp): . as $d
      brief: ($d | brief), paragraphs: ($d | paragraphs), errors: ($d | retvals), example: ($d | example), sees: ($d | sees)};
 def children($file; $scope; $grp; $acc):
   reduce ((.inner // [])[]) as $c ({file: $file, acc: $acc, out: [], skipped: []};
-    if $c.kind == "AccessSpecDecl" then .acc = $c.access
+    if $c.kind == "AccessSpecDecl" then .acc = $c.access | .skipped += ($c | skipped_of($scope; "access specifier"))
     else
       ($c.loc.file // $c.loc.expansionLoc.file // .file) as $f
       | .file = $f
@@ -75,7 +80,7 @@ def children($file; $scope; $grp; $acc):
            | ($c | group_of | if . == "" then $grp else . end) as $g
            | (if ($r.completeDefinition // false) then ($r | children($f; $scope + "::" + (($r.name // "") | plain_name); $g; (if $r.tagUsed == "class" then "private" else "public" end))) else {out: [], skipped: []} end) as $kids
            | .out += $self + $kids.out | .skipped += $kids.skipped)
-        elif (.acc == "public") and ($c.kind | IN(member_kinds[])) and ($c | has_comment) then .out += [$c | entry($f; $scope; $grp)]
+        elif (.acc == "public") and ($c.kind | IN(member_kinds[])) and ($c | has_comment) then .out += [$c | entry($f; $scope; $grp)] | .skipped += ($c | inside_entry($scope))
         else .skipped += ($c | skipped_of($scope; (if .acc == "public" then "kind with no entry" else "not public" end))) end
     end);
 def merged: . as $all | ($all | map(.scope + "::" + .name) | unique_in_order) as $keys
@@ -104,4 +109,4 @@ attribute_macros as $macros
    entries: ($sigged | merged),
    errors: [ $sigged | map(select(.errors | length > 0)) | .[] | {scope: .scope, names: .errors} ]
            | group_by(.scope) | map({scope: .[0].scope, names: (map(.names[]) | unique_in_order | join("\n"))}),
-   counts: {entries: ($raw | length), skipped: ([ $runs[].skipped[].n ] | add // 0), ast: ([ $namespaces[] | fullcomments ] | add // 0)}}
+   counts: {entries: ($raw | length), skipped: ([ $runs[].skipped[].n ] | add // 0), ast: ([ $namespaces[] | (.inner // [])[] | select(.kind != "FullComment") | fullcomments ] | add // 0)}}
