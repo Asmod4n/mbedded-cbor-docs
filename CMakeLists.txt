@@ -10,7 +10,7 @@ FetchContent_Declare(mbedded_cbor
   SOURCE_SUBDIR no-cmake-project)
 FetchContent_Declare(mustache
   GIT_REPOSITORY https://github.com/Asmod4n/mbedded-mustache.git
-  GIT_TAG claude/troff-media-type
+  GIT_TAG 138449e93b69b37acfbfa8515909feb8990213c8
   SOURCE_SUBDIR no-cmake-project)
 FetchContent_MakeAvailable(mbedded_cbor mustache)
 
