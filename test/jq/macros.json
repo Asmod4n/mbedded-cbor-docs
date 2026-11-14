@@ -1,0 +1,5 @@
+[
+  {"qname": "cbor::owner", "sigs": "class owner"},
+  {"qname": "cbor::owner::one", "sigs": "static int one()"},
+  {"qname": "cbor::limits::most", "sigs": "static constexpr std::size_t most = CBOR_LIMIT_DEFAULT"}
+]

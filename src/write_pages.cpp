@@ -19,10 +19,10 @@ constexpr auto make()
 
 constexpr auto page = mustache::static_page_of<
     "<h1>{{title}}</h1>\n"
-    "{{#entries}}<h2>{{scope}}::{{name}}</h2>\n"
+    "{{#entries}}<h2>{{qname}}</h2>\n"
     "<pre>{{sigs}}</pre>\n"
     "<p>{{brief}}</p>\n"
-    "{{#call}}<pre>&gt; {{call}}\n{{result}}</pre>\n{{/call}}"
+    "{{#example}}<pre>{{example}}</pre>\n{{/example}}"
     "{{/entries}}"
     "<h2>Errors</h2>\n"
     "{{#errors}}<h3>{{scope}}</h3>\n<pre>{{names}}</pre>\n{{/errors}}",

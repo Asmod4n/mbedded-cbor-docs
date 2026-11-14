@@ -71,3 +71,12 @@ add_test(NAME page
   COMMAND ${CMAKE_COMMAND} -DPAGE=${DOCS_PAGE}
           "-DEXPECTED=<h2>cbor::lazy</h2>;<h2>cbor::lazy::view</h2>;<h2>Errors</h2>;static std::expected&lt;lazy, error&gt; view(;<h2>cbor::at_path</h2>;<h2>cbor::error</h2>;enum class error"
           -P ${CMAKE_SOURCE_DIR}/test/check_page.cmake)
+
+foreach(case IN ITEMS overloads constructor macros comment)
+  add_test(NAME jq_${case}
+    COMMAND ${CMAKE_COMMAND} -DCASE=${case} -DCLANG=${DOCS_CLANG} -DJQ=${DOCS_JQ} -DDIR=${CMAKE_SOURCE_DIR}/test/jq
+            -DOUT=${CMAKE_BINARY_DIR} -DDOCS_JQ=${CMAKE_SOURCE_DIR}/jq/docs.jq -P ${CMAKE_SOURCE_DIR}/test/jq_case.cmake)
+endforeach()
+add_test(NAME jq_nonascii
+  COMMAND ${CMAKE_COMMAND} -DCASE=nonascii "-DMUST_FAIL_WITH=nonascii: line 5: a byte outside printable ASCII" -DCLANG=${DOCS_CLANG} -DJQ=${DOCS_JQ}
+          -DDIR=${CMAKE_SOURCE_DIR}/test/jq -DOUT=${CMAKE_BINARY_DIR} -DDOCS_JQ=${CMAKE_SOURCE_DIR}/jq/docs.jq -P ${CMAKE_SOURCE_DIR}/test/jq_case.cmake)

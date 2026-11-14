@@ -1,0 +1,4 @@
+[
+  {"qname": "cbor::holder::holder", "overloads": 2,
+   "sigs": "(1) explicit holder(int v) noexcept(true)\n(2) holder() = default"}
+]

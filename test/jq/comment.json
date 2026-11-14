@@ -1,0 +1,7 @@
+[
+  {"qname": "cbor::add_one", "scope": "cbor", "name": "add_one", "id": "cbor-add-one", "sigs": "int add_one(int value)",
+   "brief": "Adds one to value.",
+   "body": "The result is value plus one. A value of the maximum wraps.\n\nReturns: The sum.",
+   "example": "message: [1]\n> cbor::add_one(1)\n2",
+   "sees": "cbor::other"}
+]

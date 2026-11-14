@@ -1,0 +1,4 @@
+[
+  {"qname": "cbor::box::get", "overloads": 3,
+   "sigs": "(1) template <class T> requires std::is_integral_v<T> int get(T const value) const\n(2) template <class T> requires std::is_floating_point_v<T> int get(T const value) const\n(3) int get() const"}
+]
