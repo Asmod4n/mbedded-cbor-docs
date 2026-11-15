@@ -6,7 +6,9 @@
 + <span class="keyword">template</span> &lt;borrowed_range_of_chars Encoded&gt; <span class="keyword">static</span> std::expected&lt;lazy, error&gt; view(
 + <body data-group="lazy">
 + <script type="module" src="site.js">
-+ <textarea id="cbor-lazy-view-c" data-calls
-+ <span class="call">cbor::lazy::view(owner)-&gt;at(<span class="literal">"id"</span>)-&gt;get&lt;std::int64_t&gt;()</span>
-+ <span class="ok">42</span>
-+ data-message spellcheck="false">{&quot;id&quot;: 42}</textarea>
++ <pre class="code editable" contenteditable="true"
++ <span class="l"><span class="comment">// message: {"id": 42}</span></span>
++ cbor::lazy::view(owner)-&gt;at(<span class="literal">"id"</span>)-&gt;get&lt;std::int64_t&gt;()
++ <span class="r comment">// 42</span>
+- Message</label>
+- <details

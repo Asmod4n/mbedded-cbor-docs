@@ -93,6 +93,9 @@ def merged: . as $all | ($all | map(.scope + "::" + .name) | unique_in_order) as
          body: ($g | map(.paragraphs[]) | unique_in_order | join("\n\n")),
          example: ($g | map(.example) | map(select(. != "")) | first // ""),
          sees: ($g | map(.sees[]) | unique_in_order | join("\n"))} ];
+def ids_unique: reduce .[] as $e ({seen: {}, out: []};
+    (.seen[$e.id] // 0) as $n | .seen[$e.id] = ($n + 1)
+    | .out += [if $n == 0 then $e else $e + {id: ($e.id + "-" + (($n + 1) | tostring))} end]) | .out;
 attribute_macros as $macros
 | ([ outside_ascii ] | length) as $ascii
 | [ inputs | select(.kind == "NamespaceDecl") ] as $namespaces
@@ -106,7 +109,7 @@ attribute_macros as $macros
 | ($sigged | map(select(.sig == "")) | map(.scope + "::" + .name)) as $empty
 | if ($empty | length) > 0 then error("an entry has no signature: " + ($empty | join(", "))) else . end
 | {title: "mbedded-cbor",
-   entries: ($sigged | merged),
+   entries: ($sigged | merged | ids_unique),
    errors: [ $sigged | map(select(.errors | length > 0)) | .[] | {scope: .scope, names: .errors} ]
            | group_by(.scope) | map({scope: .[0].scope, names: (map(.names[]) | unique_in_order | join("\n"))}),
    counts: {entries: ($raw | length), skipped: ([ $runs[].skipped[].n ] | add // 0), ast: ([ $namespaces[] | (.inner // [])[] | select(.kind != "FullComment") | fullcomments ] | add // 0)}}

@@ -4,7 +4,7 @@ import { encoded, bytesOf, instantiated } from "../site/examples.mjs";
 const [wasm, examples, site, header] = process.argv.slice(2);
 const { run, completed } = await instantiated(readFileSync(wasm));
 const flat = s => s.replace(/\s+/g, " ").trim();
-const decoded = s => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+const decoded = s => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
 const shown = new Map();
 const shownOf = page => {
   if (!shown.has(page)) shown.set(page, flat(decoded(readFileSync(`${site}/${page}.html`, "utf8").replace(/<[^>]*>/g, ""))));

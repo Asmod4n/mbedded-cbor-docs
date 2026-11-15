@@ -88,6 +88,7 @@
         "result": "unexpected cbor::error::incorrect_type"
       }
     ],
-    "reads": "A call on doc or on bytes: doc->at(\"user\"). -> on a std::expected, . on a value. get<T>() with a type: int, double, std::string_view. at_path<\"...\">() with a JSONPath of RFC 9535. cbor::key{1} for a key that is a number. The Tab key or the button shows the names that fit."
+    "reads": "A call on doc or on bytes: doc->at(\"user\"). -> on a std::expected, . on a value. get<T>() with a type: int, double, std::string_view. at_path<\"...\">() with a JSONPath of RFC 9535. cbor::key{1} for a key that is a number. The Tab key or the button shows the names that fit.",
+    "brief": "type calls on a CBOR message and see the results"
   }
 }

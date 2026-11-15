@@ -1,11 +1,15 @@
 include "man";
 include "snippet";
 include "example";
+include "dedupe";
+include "html";
 def listed: [ $groups[0].groups[] | {name, title} ];
 def marked: $ARGS.named.marked | split("\u001e");
 . as $docs
 | ($docs.entries | length) as $n
 | ($groups[0].groups | length) as $count
+| entries_deduped([ $groups[0].groups[] | .name as $name | $docs.entries[] | select(.group == $name) ]).out as $bodies
+| briefs_deduped([ $groups[0].groups[] | .name as $name | $docs.entries[] | select(.group == $name) ]).out as $briefs
 | if $page == "index" then
   ($groups[0].index) + {name: "index", groups: listed, example_html: marked[2 * $n], rows: overview_page($groups[0].index; $groups[0].groups)}
 elif $page == "console" then
@@ -15,8 +19,8 @@ else
   | ($groups[0].groups[$gi]) as $g
   | ([ $docs.entries | to_entries[] | .key as $i | .value | select(.group == $page)
       | (spec) as $s
-      | {qname, id, sigs_html: marked[$i], brief, body, example_html: marked[$n + $i],
-         has_body: (.body != ""), has_example: (.example != "" and $s == null)} + play_fields ]) as $entries
+      | {qname, id, sigs_html: marked[$i], brief_html: ($briefs[.id] // .brief | coded), body_html: ($bodies[.id] // "" | body_html(sentences_per_entry)), example_html: marked[$n + $i],
+         has_body: (($bodies[.id] // "" | body_html(sentences_per_entry)) != ""), has_example: (.example != "" and $s == null)} + play_fields ]) as $entries
   | if ($entries | length) == 0 then error("the group " + $page + " has no entry") else . end
   | snippet($page) as $snippet
   | ([ $docs.entries[] | select(.group == $page and (.kind | IN("CXXRecordDecl", "ClassTemplateDecl"))) ]) as $classes

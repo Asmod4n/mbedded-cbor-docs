@@ -6,6 +6,7 @@ const shown = (call, result) => '<span class="call">' + escaped(call) + "</span>
   '<span class="' + (/^(fault|unexpected)/.test(result) ? "err" : "ok") + '">' + escaped(result) + "</span>";
 const module = fetch(document.querySelector('script[src^="site.js"]').src.replace(/site\.js.*$/, "examples.wasm"))
   .then(r => r.arrayBuffer()).then(instantiated);
+const resultShown = result => '<span class="' + (/^(fault|unexpected)/.test(result) ? "err" : "ok") + '">' + escaped(result) + "</span>";
 const run = module.then(m => m.run);
 
 const boxOf = box => {
@@ -38,19 +39,35 @@ const boxOf = box => {
   return { message, hex, bytes, fromMessage };
 };
 
-document.querySelectorAll(".play:has([data-calls])").forEach(box => {
-  const b = boxOf(box), calls = box.querySelector("[data-calls]"), out = box.querySelector("[data-out]");
-  const button = box.querySelector("button.run");
-  const go = async () => {
-    let bytes;
-    try { bytes = b.bytes(); } catch (e) { out.innerHTML = shown("bytes", "fault: " + e.message); return; }
-    const lines = calls.value.split("\n").filter(l => l.trim());
-    const results = await (await run)(bytes, lines.join("\n"), group);
-    out.innerHTML = lines.map((l, i) => shown(l, results[i] ?? "")).join("\n");
-  };
+const resultGap = "   ";
+const resultTail = /\s{2,}\/\/ .*$/;
+const codeLinesOf = pre => pre.innerText.replace(/ /g, " ").split("\n").map(l => l.replace(/\s+$/, "")).filter(l => l.trim());
+const messageBytes = line => {
+  const m = /^\/\/ (message|bytes): (.*)$/.exec(line);
+  if (!m) throw new Error("the first line is a comment: // message: or // bytes:");
+  return m[1] === "message" ? Uint8Array.from(encoded(JSON.parse(m[2]))) : bytesOf(m[2]);
+};
+const played = async pre => {
+  const lines = codeLinesOf(pre);
+  const old = new Map([...pre.querySelectorAll(".l")].slice(1).map(l => {
+    const copy = l.cloneNode(true);
+    copy.querySelector(".r")?.remove();
+    return [copy.textContent.trimEnd(), copy.innerHTML.trimEnd()];
+  }));
+  const calls = lines.slice(1).map(l => l.replace(resultTail, ""));
+  let results;
+  try { results = await (await run)(messageBytes(lines[0]), calls.join("\n"), group); }
+  catch (e) { results = calls.map(() => "fault: " + e.message); }
+  const widest = Math.max(0, ...calls.map(c => c.length));
+  pre.innerHTML = '<span class="l"><span class="comment">' + escaped(lines[0]) + "</span></span>" +
+    calls.map((c, i) => "\n" + '<span class="l">' + (old.get(c) ?? escaped(c)) + " ".repeat(widest - c.length) + resultGap +
+      '<span class="r comment' + (/^(fault|unexpected)/.test(results[i] ?? "") ? " err" : "") + '">// ' + escaped(results[i] ?? "") + "</span></span>").join("");
+};
+document.querySelectorAll(".example[data-play]").forEach(box => {
+  const pre = box.querySelector("pre"), button = box.querySelector("button.run");
   button.hidden = false;
-  button.addEventListener("click", go);
-  [b.message, b.hex, calls].forEach(el => el?.addEventListener("input", go));
+  button.addEventListener("click", () => played(pre));
+  pre.addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); played(pre); } });
 });
 
 const consoleBox = document.querySelector(".play[data-console]");
@@ -127,3 +144,5 @@ if (consoleBox) {
     consoleBox.scrollIntoView();
   }));
 }
+
+document.querySelectorAll("nav.side li a").forEach(a => { if (a.getAttribute("href") === location.pathname.split("/").pop()) a.classList.add("here"); });

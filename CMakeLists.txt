@@ -130,7 +130,7 @@ foreach(page IN LISTS DOCS_PAGES)
     OUTPUT ${page_dir}/data.json
     COMMAND ${DOCS_JQ} -L ${CMAKE_SOURCE_DIR}/jq --arg date ${DOCS_COMMIT_DATE} --arg source "${DOCS_MAN_SOURCE}" --arg page ${page} --slurpfile groups ${CMAKE_SOURCE_DIR}/groups.json --rawfile marked ${DOCS_MARKED} ${DOCS_TEST_ARGS}
             -f ${CMAKE_SOURCE_DIR}/jq/page.jq ${DOCS_JSON} > ${page_dir}/data.json
-    DEPENDS ${DOCS_JSON} ${DOCS_MARKED} ${CMAKE_SOURCE_DIR}/jq/dedupe.jq ${CMAKE_SOURCE_DIR}/jq/page.jq ${CMAKE_SOURCE_DIR}/jq/man.jq ${CMAKE_SOURCE_DIR}/jq/snippet.jq ${CMAKE_SOURCE_DIR}/jq/example.jq ${CMAKE_SOURCE_DIR}/groups.json
+    DEPENDS ${DOCS_JSON} ${DOCS_MARKED} ${CMAKE_SOURCE_DIR}/jq/dedupe.jq ${CMAKE_SOURCE_DIR}/jq/html.jq ${CMAKE_SOURCE_DIR}/jq/page.jq ${CMAKE_SOURCE_DIR}/jq/man.jq ${CMAKE_SOURCE_DIR}/jq/snippet.jq ${CMAKE_SOURCE_DIR}/jq/example.jq ${CMAKE_SOURCE_DIR}/groups.json
     COMMENT "The data of the page ${page}"
     VERBATIM)
   add_custom_command(

@@ -1,6 +1,6 @@
 include "snippet";
 include "example";
-def record_of($e): if $e.example == "" then "" elif ($e | spec) == null then "e" + $e.example else "e" + ($e | shown_lines) end;
+def record_of($e): if $e.example == "" then "" elif ($e | spec) == null then "e" + $e.example else "p" + (if ($e | spec).message != null then "message: " + ($e | spec).message else "bytes: " + ($e | spec).bytes end) + "\n" + (($e | spec).calls | map(.call + "\t" + .result) | join("\n")) end;
 $groups[0] as $g
 | ([ .entries[] | "c" + .sigs ]
   + [ .entries[] | record_of(.) ]

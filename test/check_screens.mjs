@@ -4,7 +4,8 @@ import { readFileSync, readdirSync, mkdtempSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 
 const [chromium, site] = process.argv.slice(2);
-const screenWidth = 2560, screenHeight = 1440, screensAllowed = 3;
+const screenWidth = 2560, screenHeight = 1440, screensAllowed = 2;
+const desktops = [[2560, 1440], [1920, 1080]];
 const phoneWidth = 390, phoneHeight = 844;
 const types = { html: "text/html", css: "text/css", mjs: "text/javascript", js: "text/javascript", wasm: "application/wasm" };
 const server = createServer((request, response) => {
@@ -58,13 +59,17 @@ let wrong = 0;
 const fail = text => { wrong++; console.error(text); };
 const rows = [];
 for (const name of readdirSync(site).filter(f => f.endsWith(".html")).sort()) {
-  await opened(name, screenWidth, screenHeight, false);
-  const height = await evaluate("document.documentElement.scrollHeight");
+  const screens = [];
+  for (const [w, h] of desktops) {
+    await opened(name, w, h, false);
+    const height = await evaluate("document.documentElement.scrollHeight");
+    screens.push(`${(height / h).toFixed(2)} screens at ${w}x${h}`);
+    if (height > screensAllowed * h) fail(`${name}: ${height} px high at ${w}x${h}, more than ${screensAllowed} screens`);
+  }
   await opened(name, phoneWidth, phoneHeight, true);
   const width = await evaluate("document.documentElement.scrollWidth");
   const words = await evaluate("document.body.innerText.split(/\\s+/).filter(Boolean).length");
-  rows.push(`${name}\t${(height / screenHeight).toFixed(2)} screens at ${screenWidth}x${screenHeight}\t${width} px wide at ${phoneWidth}\t${words} words`);
-  if (height > screensAllowed * screenHeight) fail(`${name}: ${height} px high at ${screenWidth}x${screenHeight}, more than ${screensAllowed} screens`);
+  rows.push(`${name}\t${screens.join("\t")}\t${width} px wide at ${phoneWidth}\t${words} words`);
   if (width > phoneWidth) {
     const wide = await evaluate(`[...document.querySelectorAll("body *")].filter(e => e.getBoundingClientRect().right > ${phoneWidth} && ![...Array(20)].reduce(([n, hit]) => [n?.parentElement, hit || (n && n !== e && /auto|scroll|hidden/.test(getComputedStyle(n).overflowX))], [e, false])[1]).slice(0, 3).map(e => Math.round(e.getBoundingClientRect().right) + " " + getComputedStyle(e).display + " " + e.tagName + "." + e.className + " " + (e.textContent ?? "").slice(0, 40)).join(" | ")`);
     fail(`${name}: ${width} px wide at ${phoneWidth}, the page scrolls sideways; wide: ${wide}`);
@@ -73,11 +78,11 @@ for (const name of readdirSync(site).filter(f => f.endsWith(".html")).sort()) {
 console.log(rows.join("\n"));
 if (existsSync(`${site}/lazy.html`)) {
 await opened("lazy.html", screenWidth, screenHeight, false);
-if ((await evaluate("document.querySelectorAll('.play button.run:not([hidden])').length")) === 0) fail("lazy.html: the script did not show a Run button");
-await evaluate(`(async () => { document.querySelector('[data-calls]').value = 'doc->size()'; document.querySelector('[data-calls]').dispatchEvent(new Event('input')); })()`);
+if ((await evaluate("document.querySelectorAll('.example button.run:not([hidden])').length")) === 0) fail("lazy.html: the script did not show a Run button");
+await evaluate(`document.querySelector(".example button.run").click()`);
 await pause(1500);
-const shown = await evaluate("document.querySelector('.play [data-out]').textContent");
-if (!/doc->size\(\)\s*\n?\s*1/.test(shown) && !shown.includes("doc->size()")) fail(`lazy.html: the play box shows ${shown}`);
+const shown = await evaluate("document.querySelector('.example pre').textContent");
+if (shown.includes("// fault") || !shown.includes("// ")) fail(`lazy.html: the example shows ${shown}`);
 await opened("console.html", screenWidth, screenHeight, false);
 await evaluate(`(async () => { const form = document.querySelector('.play[data-console] form'); form.requestSubmit(); })()`);
 await pause(1500);

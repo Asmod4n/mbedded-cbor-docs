@@ -1,8 +1,7 @@
 {{>head}}
 <h1>{{name}}</h1>
-<p>{{brief}}</p>
 {{#has_snippet}}<pre>{{{snippet_html}}}</pre>
 {{/has_snippet}}<table>
-{{#entries}}<tr><td><a href="#{{id}}">{{qname}}</a></td><td>{{brief}}</td></tr>
+{{#entries}}<tr><td><a href="#{{id}}">{{qname}}</a></td><td>{{{brief_html}}}</td></tr>
 {{/entries}}</table>
 {{>entries}}{{>foot}}

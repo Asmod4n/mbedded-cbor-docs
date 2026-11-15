@@ -4,9 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{title}}</title>
+<meta name="description" content="{{brief}}">
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="style.css">
 </head>
 <body data-group="{{name}}">
-<nav><a href="index.html">mbedded-cbor</a>{{#groups}} <a href="{{name}}.html">{{name}}</a>{{/groups}} <a href="console.html">console</a></nav>
+<div class="layout">
+<nav class="side"><a href="index.html"><strong>mbedded-cbor</strong></a>
+<ul>
+{{#groups}}<li><a href="{{name}}.html">{{name}}</a></li>
+{{/groups}}<li><a href="console.html">console</a></li>
+</ul></nav>
 <main>

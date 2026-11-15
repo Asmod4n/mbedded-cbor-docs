@@ -1,6 +1,8 @@
 // Writes each record of standard input as HTML, with the tokens of libclang for the colours of the C++.
 #include <clang-c/Index.h>
 
+#include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <iostream>
@@ -16,6 +18,9 @@ namespace {
 constexpr char record_separator = '\x1e';
 constexpr char code_record = 'c';
 constexpr char example_record = 'e';
+constexpr char play_record = 'p';
+constexpr char call_result_separator = '\t';
+constexpr std::size_t result_gap = 3;
 constexpr std::string_view call_prompt = "> ";
 constexpr std::string_view message_prefix = "message: ";
 constexpr std::string_view bytes_prefix = "bytes: ";
@@ -130,11 +135,35 @@ std::string example_highlighted(const CXIndex index, const std::string_view text
     return out;
 }
 
+std::string play_highlighted(const CXIndex index, const std::string_view text)
+{
+    std::vector<std::string_view> lines;
+    for (std::size_t at = 0; at <= text.size();) {
+        const std::size_t end = text.find('\n', at);
+        lines.push_back(text.substr(at, end == std::string_view::npos ? end : end - at));
+        if (end == std::string_view::npos) break;
+        at = end + 1;
+    }
+    std::size_t widest = 0;
+    for (std::size_t i = 1; i < lines.size(); ++i)
+        widest = std::max(widest, lines[i].substr(0, lines[i].find(call_result_separator)).size());
+    std::string out = "<span class=\"l\"><span class=\"comment\">// " + html_escaped(lines.front()) + "</span></span>";
+    for (std::size_t i = 1; i < lines.size(); ++i) {
+        const std::size_t cut = lines[i].find(call_result_separator);
+        const std::string_view call = lines[i].substr(0, cut);
+        const std::string_view result = cut == std::string_view::npos ? std::string_view{} : lines[i].substr(cut + 1);
+        out += "\n<span class=\"l\">" + code_highlighted(index, call) + std::string(widest - call.size() + result_gap, ' ') +
+               "<span class=\"r comment\">// " + html_escaped(result) + "</span></span>";
+    }
+    return out;
+}
+
 std::string record_highlighted(const CXIndex index, const std::string_view record)
 {
     if (record.empty()) return {};
     if (record.front() == code_record) return code_highlighted(index, record.substr(1));
     if (record.front() == example_record) return example_highlighted(index, record.substr(1));
+    if (record.front() == play_record) return play_highlighted(index, record.substr(1));
     throw std::runtime_error("a record starts with neither c nor e");
 }
 
