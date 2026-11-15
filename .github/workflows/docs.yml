@@ -1,0 +1,126 @@
+name: docs
+
+on:
+  push:
+    paths:
+      - 'CMakeLists.txt'
+      - 'jq/**'
+      - 'src/**'
+      - 'templates/**'
+      - 'site/**'
+      - 'repl/**'
+      - 'groups.json'
+      - 'test/**'
+      - 'ci/**'
+      - 'containers/docs.Containerfile'
+      - '.github/workflows/docs.yml'
+  schedule:
+    - cron: '13,43 0-4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - id: last
+        if: github.event_name == 'schedule'
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ runner.temp }}/slot
+          key: night-slot-none
+          restore-keys: night-slot-
+      - id: decide
+        name: Decide whether this tick is the slot of the night
+        run: |
+          . ci/night.sh
+          if [ "$GITHUB_EVENT_NAME" != schedule ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          slot=
+          if [ -f "$RUNNER_TEMP/slot/slot.txt" ]; then slot=$(cat "$RUNNER_TEMP/slot/slot.txt"); fi
+          decision=$(night_decision "$(date -u +%F)" "$(date -u +%H:%M)" "${slot% *}" "${slot#* }")
+          echo "slot '$slot', decision $decision"
+          if [ "$decision" = run ]; then echo "run=true" >> "$GITHUB_OUTPUT"; else echo "run=false" >> "$GITHUB_OUTPUT"; fi
+
+  build:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - id: snapshot
+        name: Read the date of Debian sid
+        run: |
+          echo "snapshot=$(curl -sSf https://deb.debian.org/debian/dists/sid/InRelease | sed -n 's/^Date: //p' | head -1 | date -u -f - +%Y%m%dT%H%M%S)" >> "$GITHUB_OUTPUT"
+      - id: image
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ runner.temp }}/image-docs
+          key: image-docs-${{ steps.snapshot.outputs.snapshot }}-${{ hashFiles('containers/docs.Containerfile') }}
+      - if: steps.image.outputs.cache-hit != 'true'
+        name: Build the image
+        run: |
+          mkdir -p "$RUNNER_TEMP/image-docs"
+          podman build -q -t mbedded-cbor-docs -f containers/docs.Containerfile containers
+          podman save -o "$RUNNER_TEMP/image-docs/image.tar" mbedded-cbor-docs
+      - if: steps.image.outputs.cache-hit == 'true'
+        name: Load the image
+        run: podman load -q -i "$RUNNER_TEMP/image-docs/image.tar"
+      - name: Build and test the site
+        run: |
+          podman run --rm -v "$PWD":/work -w /work mbedded-cbor-docs sh -ec '
+            cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=g++-16
+            cmake --build build
+            ctest --test-dir build --output-on-failure'
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        with:
+          path: build/site
+
+  draw:
+    needs: [gate, build]
+    if: always() && github.event_name == 'schedule' && needs.gate.outputs.run == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - id: slot
+        name: Draw the slot of the next night
+        run: |
+          . ci/night.sh
+          mkdir -p "$RUNNER_TEMP/slot"
+          night_draw "$(date -u +%F)" "$(od -An -N2 -tu2 /dev/urandom | tr -d ' ')" > "$RUNNER_TEMP/slot/slot.txt"
+          cat "$RUNNER_TEMP/slot/slot.txt"
+          echo "key=night-slot-$(date -u +%F)-$GITHUB_RUN_ID" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ runner.temp }}/slot
+          key: ${{ steps.slot.outputs.key }}
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5

@@ -261,3 +261,5 @@ find_program(DOCS_CHROMIUM NAMES chromium chromium-browser REQUIRED)
 add_test(NAME screens_of_the_site COMMAND ${DOCS_NODE} ${CMAKE_SOURCE_DIR}/test/check_screens.mjs ${DOCS_CHROMIUM} ${DOCS_OUTPUT_DIR})
 add_test(NAME screens_finds_a_bad_page COMMAND ${DOCS_NODE} ${CMAKE_SOURCE_DIR}/test/check_screens.mjs ${DOCS_CHROMIUM} ${CMAKE_SOURCE_DIR}/test/screens/bad)
 set_tests_properties(screens_finds_a_bad_page PROPERTIES WILL_FAIL TRUE)
+
+add_test(NAME night_slot COMMAND sh ${CMAKE_SOURCE_DIR}/test/night.sh ${CMAKE_SOURCE_DIR}/ci/night.sh)
