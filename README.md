@@ -39,6 +39,4 @@ This puts the pages into `share/man/man3`.
 
 ## CI
 
-`.github/workflows/docs.yml` builds and tests on a push that changes a file of the build. On `main` it also publishes the site with GitHub Pages. A night run builds again, because a push to mbedded-cbor does not start a run here. It starts at a time between 00:13 and 03:43 UTC that the run of the night before drew.
-
-GitHub turns off a schedule in a public repository after 60 days with no activity in it. To turn it on again, open the Actions tab and enable the workflow `docs`.
+`.github/workflows/docs.yml` builds and tests on a push that changes a file of the build. On `main` it also publishes the site with GitHub Pages. It runs on request too (workflow_dispatch), because a push to mbedded-cbor does not start a run here.

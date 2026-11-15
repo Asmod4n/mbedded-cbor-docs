@@ -130,7 +130,7 @@ foreach(page IN LISTS DOCS_PAGES)
     OUTPUT ${page_dir}/data.json
     COMMAND ${DOCS_JQ} -L ${CMAKE_SOURCE_DIR}/jq --arg date ${DOCS_COMMIT_DATE} --arg source "${DOCS_MAN_SOURCE}" --arg page ${page} --slurpfile groups ${CMAKE_SOURCE_DIR}/groups.json --rawfile marked ${DOCS_MARKED} ${DOCS_TEST_ARGS}
             -f ${CMAKE_SOURCE_DIR}/jq/page.jq ${DOCS_JSON} > ${page_dir}/data.json
-    DEPENDS ${DOCS_JSON} ${DOCS_MARKED} ${CMAKE_SOURCE_DIR}/jq/page.jq ${CMAKE_SOURCE_DIR}/jq/man.jq ${CMAKE_SOURCE_DIR}/jq/snippet.jq ${CMAKE_SOURCE_DIR}/jq/example.jq ${CMAKE_SOURCE_DIR}/groups.json
+    DEPENDS ${DOCS_JSON} ${DOCS_MARKED} ${CMAKE_SOURCE_DIR}/jq/dedupe.jq ${CMAKE_SOURCE_DIR}/jq/page.jq ${CMAKE_SOURCE_DIR}/jq/man.jq ${CMAKE_SOURCE_DIR}/jq/snippet.jq ${CMAKE_SOURCE_DIR}/jq/example.jq ${CMAKE_SOURCE_DIR}/groups.json
     COMMENT "The data of the page ${page}"
     VERBATIM)
   add_custom_command(
@@ -261,5 +261,3 @@ find_program(DOCS_CHROMIUM NAMES chromium chromium-browser REQUIRED)
 add_test(NAME screens_of_the_site COMMAND ${DOCS_NODE} ${CMAKE_SOURCE_DIR}/test/check_screens.mjs ${DOCS_CHROMIUM} ${DOCS_OUTPUT_DIR})
 add_test(NAME screens_finds_a_bad_page COMMAND ${DOCS_NODE} ${CMAKE_SOURCE_DIR}/test/check_screens.mjs ${DOCS_CHROMIUM} ${CMAKE_SOURCE_DIR}/test/screens/bad)
 set_tests_properties(screens_finds_a_bad_page PROPERTIES WILL_FAIL TRUE)
-
-add_test(NAME night_slot COMMAND sh ${CMAKE_SOURCE_DIR}/test/night.sh ${CMAKE_SOURCE_DIR}/ci/night.sh)
