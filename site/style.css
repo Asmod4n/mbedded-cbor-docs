@@ -50,3 +50,12 @@ pre.out { border-top: 0; }
 .play .completions button { font: 0.8rem ui-monospace, monospace; background: var(--panel); color: var(--fg); border: 1px solid var(--rule); border-radius: 4px; padding: 0.2rem 0.45rem; cursor: pointer; }
 .play .completions button[aria-selected="true"] { border-color: var(--link); color: var(--link); }
 button.complete { font: 600 0.9rem system-ui, sans-serif; background: var(--panel); color: var(--fg); border: 1px solid var(--rule); border-radius: 4px; padding: 0.25rem 0.6rem; cursor: pointer; }
+table { display: block; overflow-x: auto; }
+details.edit { border-bottom: 1px dashed var(--rule); }
+details.edit summary { cursor: pointer; padding: 0.3rem 0.7rem; font-size: 0.8rem; color: var(--link); }
+.entries section { break-inside: avoid; }
+@media (min-width: 1100px) {
+  main { max-width: none; }
+  .entries { columns: 30rem; column-gap: 2rem; }
+}
+h1, h2, h3, td, p { overflow-wrap: anywhere; }

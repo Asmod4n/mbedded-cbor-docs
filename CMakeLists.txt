@@ -256,3 +256,8 @@ add_test(NAME examples_run
 add_test(NAME links_of_the_site COMMAND ${DOCS_NODE} ${CMAKE_SOURCE_DIR}/test/check_links.mjs ${DOCS_OUTPUT_DIR})
 add_test(NAME links_finds_a_broken_one COMMAND ${DOCS_NODE} ${CMAKE_SOURCE_DIR}/test/check_links.mjs ${CMAKE_SOURCE_DIR}/test/links/bad)
 set_tests_properties(links_finds_a_broken_one PROPERTIES WILL_FAIL TRUE)
+
+find_program(DOCS_CHROMIUM NAMES chromium chromium-browser REQUIRED)
+add_test(NAME screens_of_the_site COMMAND ${DOCS_NODE} ${CMAKE_SOURCE_DIR}/test/check_screens.mjs ${DOCS_CHROMIUM} ${DOCS_OUTPUT_DIR})
+add_test(NAME screens_finds_a_bad_page COMMAND ${DOCS_NODE} ${CMAKE_SOURCE_DIR}/test/check_screens.mjs ${DOCS_CHROMIUM} ${CMAKE_SOURCE_DIR}/test/screens/bad)
+set_tests_properties(screens_finds_a_bad_page PROPERTIES WILL_FAIL TRUE)
