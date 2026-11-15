@@ -1,3 +1,4 @@
+def regex_escaped: gsub("(?<c>[^A-Za-z0-9_])"; "\\" + .c);
 def escaped: gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;");
 def unlinked: gsub("\\[(?<t>[^\\]]+)\\]\\([^)]*\\)"; "\(.t)");
 def coded: unlinked | escaped | gsub("`(?<c>[^`]+)`"; "<code>\(.c)</code>");
@@ -20,3 +21,9 @@ def body_html($sentences):
       else ([ $p | split("(?<=[.!?])\\s+"; null)[] | select(. != "") ]) as $ss
         | .out += "<p>" + ($ss[0:.left] | join(" ") | coded) + "</p>\n" | .left -= ($ss | length) end)
   | .out;
+def qualified_line($name; $qname):
+  ($name | regex_escaped) as $n
+  | ("(?<![\\w:])" + $n + "\\(") as $call
+  | ("(?<![\\w:])" + $n + "\\b") as $word
+  | if test($call) then sub($call; $qname + "(") else sub($word; $qname) end;
+def qualified_sigs($e): $e.sigs | split("\n") | map(qualified_line($e.name; $e.qname)) | join("\n");

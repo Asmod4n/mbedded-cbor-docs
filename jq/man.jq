@@ -66,11 +66,11 @@ def decl_lines($whole; $name; $w):
              end)
       end
   end;
-def sig_text_lines($line; $name):
+def sig_text_lines($line; $name; $reduce):
   ($line | capture("^(?<number>\\([0-9]+\\) )?(?<decl>.*)$")) as $p
   | ($p.number // "") as $number
   | ($p.decl | without_requires | template_split) as $t
-  | (man_width - ($number | length)) as $w
+  | (man_width - ($number | length) - $reduce) as $w
   | ((if $t.template == "" then [] elif ($t.template | length) > $w then ($t.template | wrapped($w; 10)) else [$t.template] end)
      + decl_lines($t.rest; $name; $w))
   | . as $all | [ range(0; $all | length) as $i | (if $i == 0 then $number else spaces($number | length) end) + $all[$i] ];
@@ -90,11 +90,28 @@ def named_row($file; $line; $name):
   | if $m == null then row("line"; $file; $line; ""; ""; "")
     else row("sig"; $file; $line[0:$m.offset]; $name; $line[($m.offset + $m.length):]; "") end;
 def line_index($lines; $pattern): ([ range(0; $lines | length) | select($lines[.] | test($pattern)) ] | .[0]);
-def signature_rows($file; $e):
-  ($e.sigs | split("\n") | map(sig_text_lines(.; $e.name)) | add) as $lines
+def sig_decl_lines($e; $indent; $suffix):
+  [ $e.sigs | split("\n")[] | sig_text_lines(.; $e.name; $indent + ($suffix | length)) | (.[-1] += $suffix) | map(spaces($indent) + .) ] | add;
+def signature_rows($file; $e; $indent; $suffix):
+  sig_decl_lines($e; $indent; $suffix) as $lines
   | (line_index($lines; ($e.name | regex_escaped) + "\\(") // line_index($lines; "\\b" + ($e.name | regex_escaped) + "\\b") // -1) as $at
   | [ range(0; $lines | length) as $i | if $i == $at then named_row($file; $lines[$i]; $e.name) else row("line"; $file; $lines[$i]; ""; ""; "") end ];
-def signature_block($file; $entries): [ $entries | to_entries[] | (if .key > 0 then [row("sp"; $file; ""; ""; ""; "")] else [] end) + signature_rows($file; .value) ] | add // [];
+def signature_block($file; $entries; $indent; $suffix): [ $entries | to_entries[] | (if .key > 0 then [row("sp"; $file; ""; ""; ""; "")] else [] end) + signature_rows($file; .value; $indent; $suffix) ] | add // [];
+def text_row($file; $text): row("line"; $file; $text; ""; ""; "");
+def namespace_of($scope; $classes): ($scope | split("::")) as $parts
+  | (reduce range(0; $parts | length) as $i ({done: false, ns: []};
+      if .done then . elif (($parts[0:($i + 1)] | join("::")) | IN($classes[])) then .done = true else .ns += [$parts[$i]] end)).ns | join("::");
+def class_synopsis($file; $c; $members; $classes):
+  namespace_of($c.scope; $classes) as $ns
+  | (($c.scope | ltrimstr($ns) | ltrimstr("::")) | if . == "" then "" else . + "::" end) as $outer
+  | ($c + {name: ($outer + $c.name), sigs: ($c.sigs | split("\n") | map(sub("(?<![\\w:])" + ($c.name | regex_escaped) + "\\b"; $outer + $c.name)) | join("\n"))}) as $shown
+  | [text_row($file; "namespace " + $ns + " {")]
+  + (if ($members | length) == 0 then signature_rows($file; $shown; 0; ";")
+     else signature_rows($file; $shown; 0; " {") + signature_block($file; $members; 4; ";") + [text_row($file; "};")] end)
+  + [text_row($file; "}")];
+def function_synopsis($file; $functions):
+  [ $functions | group_by(.scope)[] | . as $g | [text_row($file; "namespace " + $g[0].scope + " {")] + signature_block($file; $g; 0; ";") + [text_row($file; "}")] ]
+  | to_entries | map((if .key > 0 then [row("sp"; $file; ""; ""; ""; "")] else [] end) + .value) | add // [];
 def section($file; $title; $rows): if ($rows | length) == 0 then [] else [row("sh"; $file; $title; ""; ""; "")] + $rows end;
 def tag_rows($file; $pairs): [ $pairs[] | row("tp"; $file; .[0]; .[1]; ""; "") ];
 def text_of($e): ([$e.brief] + ($e.body | paragraphs | map(select(startswith("Throws:") | not)))) | map(select(. != "")) | join(" ");
@@ -111,7 +128,7 @@ def class_page($c; $entries; $errors; $group):
   | [ $entries[] | select(.scope == $c.qname) ] as $members
   | ([$c] + $members) as $all
   | file_rows($file; $c.qname; $c.brief)
-  + synopsis_rows($file; signature_block($file; $all))
+  + synopsis_rows($file; class_synopsis($file; $c; $members; [ $entries[] | select(.kind | IN("CXXRecordDecl", "ClassTemplateDecl")) | .qname ]))
   + section($file; "DESCRIPTION";
       ([ $c.body | paragraphs | map(select(startswith("Throws:") | not)) | to_entries[] | row(if .key == 0 then "text" else "pp" end; $file; .value; ""; ""; "") ]
        + [ $members[] | row("tp"; $file; .name; text_of(.); ""; "") ]))
@@ -124,7 +141,7 @@ def group_page($g; $entries; $snippet):
   | [ $mine[] | select(.kind | IN("CXXRecordDecl", "ClassTemplateDecl")) ] as $classes
   | [ $mine[] | select(.scope == "cbor" and (.kind | IN("CXXRecordDecl", "ClassTemplateDecl") | not)) ] as $functions
   | file_rows($file; "mbedded-cbor-" + $g.name; $g.title)
-  + synopsis_rows($file; signature_block($file; $functions))
+  + synopsis_rows($file; function_synopsis($file; $functions))
   + section($file; "DESCRIPTION";
       ([ $classes[] | row("tp"; $file; .qname; .brief; ""; "") ] + [ $functions[] | row("tp"; $file; .qname; .brief; ""; "") ]))
   + section($file; "ERRORS"; tag_rows($file; throws_pairs($functions; "")))

@@ -3,7 +3,7 @@
 + <h2>cbor::lazy</h2>
 + <h2>cbor::lazy::view</h2>
 + <span class="keyword">auto</span> <span class="keyword">const</span> doc = cbor::lazy::adopt(std::move(bytes))
-+ <span class="keyword">template</span> &lt;borrowed_range_of_chars Encoded&gt; <span class="keyword">static</span> std::expected&lt;lazy, error&gt; view(
++ <span class="keyword">template</span> &lt;borrowed_range_of_chars Encoded&gt; <span class="keyword">static</span> std::expected&lt;lazy, error&gt; cbor::lazy::view(
 + <body data-group="lazy">
 + <script type="module" src="site.js">
 + <pre class="code editable" contenteditable="true"
