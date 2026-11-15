@@ -1,0 +1,29 @@
+{{>head}}
+<h1>{{title}}</h1>
+<p>{{lead}}</p>
+<div class="play" data-console>
+<div class="fields">
+<div class="field"><label for="co-m">Message</label><textarea id="co-m" data-message spellcheck="false">{{default_message}}</textarea></div>
+<div class="field"><label for="co-b">Bytes</label><input id="co-b" class="hex" data-bytes spellcheck="false" value=""></div>
+</div>
+<div class="log" id="co-log" aria-live="polite"></div>
+<form id="co-form" autocomplete="off">
+<span class="prompt">&raquo;</span>
+<input id="co-line" value="{{default_call}}" spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="co-completions" aria-label="A call on doc">
+<button class="complete" type="button" data-complete aria-label="Show the names that fit">Tab</button>
+<button class="run" type="submit">Run</button>
+</form>
+<div class="completions" id="co-completions" role="listbox" data-completions hidden></div>
+</div>
+<p class="note">{{reads}}</p>
+{{#samples}}<section id="{{id}}">
+<h2>{{title}}</h2>
+<p>{{text}}</p>
+<div class="play" data-sample>
+<div class="bar"><span class="label">Example</span><button class="run" type="button" data-load data-load-message="{{message}}" data-load-call="{{call}}">Load</button></div>
+<div class="out"><span class="call">{{message}}</span>
+<span class="call">&raquo; {{{call_html}}}</span>
+{{#has_failure}}<span class="err">{{result}}</span>{{/has_failure}}{{^has_failure}}<span class="ok">{{result}}</span>{{/has_failure}}</div>
+</div>
+</section>
+{{/samples}}{{>foot}}

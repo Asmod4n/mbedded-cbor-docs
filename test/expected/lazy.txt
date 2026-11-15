@@ -2,6 +2,11 @@
 + read a CBOR message in place, step by step
 + <h2>cbor::lazy</h2>
 + <h2>cbor::lazy::view</h2>
-+ (1) template &lt;borrowed_range_of_chars Encoded&gt; static std::expected&lt;lazy, error&gt; view(
-+ &gt; cbor::lazy::view(owner)
-+ auto const doc = cbor::lazy::adopt(std::move(bytes))
++ <span class="keyword">auto</span> <span class="keyword">const</span> doc = cbor::lazy::adopt(std::move(bytes))
++ <span class="keyword">template</span> &lt;borrowed_range_of_chars Encoded&gt; <span class="keyword">static</span> std::expected&lt;lazy, error&gt; view(
++ <body data-group="lazy">
++ <script type="module" src="site.js">
++ <textarea id="cbor-lazy-view-c" data-calls
++ <span class="call">cbor::lazy::view(owner)-&gt;at(<span class="literal">"id"</span>)-&gt;get&lt;std::int64_t&gt;()</span>
++ <span class="ok">42</span>
++ data-message spellcheck="false">{&quot;id&quot;: 42}</textarea>

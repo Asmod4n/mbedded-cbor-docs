@@ -1,0 +1,17 @@
+{{#entries}}<section id="{{id}}">
+<h2>{{qname}}</h2>
+<pre>{{{sigs_html}}}</pre>
+{{#has_body}}<p class="text">{{body}}</p>
+{{/has_body}}{{#has_example}}<pre class="out">{{{example_html}}}</pre>
+{{/has_example}}{{#has_play}}<div class="play">
+<div class="bar"><span class="label">Example</span><button class="run" type="button" hidden>Run</button></div>
+<div class="fields">
+{{#has_message}}<div class="field"><label for="{{id}}-m">Message</label><textarea id="{{id}}-m" data-message spellcheck="false">{{play_message}}</textarea></div>
+{{/has_message}}{{^has_message}}<div class="field"><label for="{{id}}-m">Message</label><textarea id="{{id}}-m" data-notation readonly spellcheck="false"></textarea></div>
+{{/has_message}}<div class="field"><label for="{{id}}-b">Bytes</label><input id="{{id}}-b" class="hex" data-bytes spellcheck="false" value="{{play_bytes}}"></div>
+<div class="field"><label for="{{id}}-c">Calls</label><textarea id="{{id}}-c" data-calls spellcheck="false" wrap="off" rows="{{play_rows}}">{{play_calls}}</textarea></div>
+</div>
+<div class="out" data-out aria-live="polite">{{{example_html}}}</div>
+</div>
+{{/has_play}}</section>
+{{/entries}}

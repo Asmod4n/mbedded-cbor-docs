@@ -2,11 +2,12 @@
 <h1>{{title}}</h1>
 <p>{{brief}}</p>
 <h2>Example</h2>
-<pre>{{example}}</pre>
+<pre>{{{example_html}}}</pre>
 <h2>Install</h2>
 <pre>{{install}}</pre>
 <h2>Reference</h2>
 <table>
 {{#groups}}<tr><td><a href="{{name}}.html">{{name}}</a></td><td>{{title}}</td></tr>
-{{/groups}}</table>
+{{/groups}}<tr><td><a href="console.html">console</a></td><td>type calls on a message and see the results</td></tr>
+</table>
 {{>foot}}

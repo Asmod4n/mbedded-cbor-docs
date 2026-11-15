@@ -1,17 +1,11 @@
 {{>head}}
 <h1>{{name}}</h1>
 <p>{{brief}}</p>
-{{#has_snippet}}<pre>{{snippet}}</pre>
+{{#has_snippet}}<pre>{{{snippet_html}}}</pre>
 {{/has_snippet}}<table>
 {{#entries}}<tr><td><a href="#{{id}}">{{qname}}</a></td><td>{{brief}}</td></tr>
 {{/entries}}</table>
-{{#entries}}<section id="{{id}}">
-<h2>{{qname}}</h2>
-<pre>{{sigs}}</pre>
-{{#has_body}}<p class="text">{{body}}</p>
-{{/has_body}}{{#has_example}}<pre>{{example}}</pre>
-{{/has_example}}</section>
-{{/entries}}<h2 id="errors-of-each-class">Errors of each class</h2>
+{{>entries}}<h2 id="errors-of-each-class">Errors of each class</h2>
 {{#errors}}<h3>{{scope}}</h3>
 <pre>{{names}}</pre>
 {{/errors}}{{>foot}}

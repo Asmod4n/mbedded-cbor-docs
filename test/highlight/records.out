@@ -1,0 +1,4 @@
+<span class="keyword">auto</span> <span class="keyword">const</span> n = <span class="literal">42</span>; <span class="comment">// x &amp; y</span><span class="call">doc-&gt;at(<span class="literal">"a"</span>)-&gt;get&lt;<span class="keyword">int</span>&gt;()</span>
+<span class="ok">42</span>
+<span class="call">doc-&gt;at(<span class="literal">"b"</span>)</span>
+<span class="err">unexpected cbor::error::key_not_found</span>

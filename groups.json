@@ -6,13 +6,88 @@
     "install": "cmake -S mbedded-cbor -B build -DBUILD_TESTING=OFF\ncmake --install build --prefix /usr/local\n\nfind_package(mbedded-cbor 0.9 CONFIG REQUIRED)\ntarget_link_libraries(app PRIVATE mbedded-cbor::mbedded-cbor)"
   },
   "groups": [
-    {"name": "decode", "title": "a decoded tree of CBOR and the encoder"},
-    {"name": "errors", "title": "the error values of the library and the limits of a build"},
-    {"name": "lazy", "title": "read a CBOR message in place, step by step"},
-    {"name": "path", "title": "read a CBOR value by its JSONPath (RFC 9535)"},
-    {"name": "ref", "title": "results that hold the bytes they point into"},
-    {"name": "schema", "title": "structs as Packed CBOR, with fields at fixed offsets"},
-    {"name": "structs", "title": "any CBOR into a C++ struct and back"},
-    {"name": "tools", "title": "check, split and print CBOR bytes"}
-  ]
+    {
+      "name": "decode",
+      "title": "a decoded tree of CBOR and the encoder"
+    },
+    {
+      "name": "errors",
+      "title": "the error values of the library and the limits of a build"
+    },
+    {
+      "name": "lazy",
+      "title": "read a CBOR message in place, step by step"
+    },
+    {
+      "name": "path",
+      "title": "read a CBOR value by its JSONPath (RFC 9535)"
+    },
+    {
+      "name": "ref",
+      "title": "results that hold the bytes they point into"
+    },
+    {
+      "name": "schema",
+      "title": "structs as Packed CBOR, with fields at fixed offsets"
+    },
+    {
+      "name": "structs",
+      "title": "any CBOR into a C++ struct and back"
+    },
+    {
+      "name": "tools",
+      "title": "check, split and print CBOR bytes"
+    }
+  ],
+  "console": {
+    "title": "Console",
+    "lead": "Type calls on doc, the message below, or on bytes, its bytes. doc is a std::expected<cbor::lazy, cbor::error>, so -> reads the lazy, as in C++. Each call runs in the library, compiled to WebAssembly. It is not a C++ compiler: a loop or a new struct does not run here.",
+    "default_message": "{\"user\": {\"id\": 42, \"name\": \"ann\", \"tags\": [\"a\", \"b\"]}}",
+    "default_call": "doc->at(\"user\")->at(\"name\")->get<std::string_view>()",
+    "samples": [
+      {
+        "title": "Read a field by its key",
+        "text": "at goes to the value of a key. A text comes back as a view into the message.",
+        "message": "{\"user\": {\"id\": 42, \"name\": \"ann\"}}",
+        "call": "doc->at(\"user\")->at(\"name\")->get<std::string_view>()",
+        "result": "ref to \"ann\""
+      },
+      {
+        "title": "Read an element by its index",
+        "text": "at with a number goes to that element of an array.",
+        "message": "{\"tags\": [\"a\", \"b\", \"c\"]}",
+        "call": "doc->at(\"tags\")->at(1)->get<std::string_view>()",
+        "result": "ref to \"b\""
+      },
+      {
+        "title": "Read one value by its path",
+        "text": "at_path reads one value by its JSONPath and skips the rest of the message.",
+        "message": "{\"user\": {\"id\": 42, \"name\": \"ann\"}}",
+        "call": "doc->at_path<\"$.user.id\">()->get<int>()",
+        "result": "42"
+      },
+      {
+        "title": "Read all values of a path",
+        "text": "With cbor::nodelist, a path with [*] gives every value that matches.",
+        "message": "{\"users\": [{\"name\": \"ann\"}, {\"name\": \"bob\"}]}",
+        "call": "doc->at_path<\"$.users[*].name\", cbor::nodelist>()->size()",
+        "result": "2"
+      },
+      {
+        "title": "Show the message as text",
+        "text": "diagnostic_notation writes the bytes as CBOR diagnostic notation.",
+        "message": "{\"user\": {\"id\": 42, \"name\": \"ann\"}}",
+        "call": "cbor::diagnostic_notation(bytes).value()",
+        "result": "\"{\\\"user\\\": {\\\"id\\\": 42, \\\"name\\\": \\\"ann\\\"}}\""
+      },
+      {
+        "title": "Read a value with the wrong type",
+        "text": "A value of another type comes back as a cbor::error, not as an exception.",
+        "message": "{\"user\": {\"id\": 42, \"name\": \"ann\"}}",
+        "call": "doc->at(\"user\")->at(\"name\")->get<int>()",
+        "result": "unexpected cbor::error::incorrect_type"
+      }
+    ],
+    "reads": "A call on doc or on bytes: doc->at(\"user\"). -> on a std::expected, . on a value. get<T>() with a type: int, double, std::string_view. at_path<\"...\">() with a JSONPath of RFC 9535. cbor::key{1} for a key that is a number. The Tab key or the button shows the names that fit."
+  }
 }

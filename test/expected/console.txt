@@ -1,0 +1,10 @@
++ <h1>Console</h1>
++ <div class="play" data-console>
++ <label for="co-m">Message</label>
++ data-complete
++ data-load
++ doc-&gt;at(<span class="literal">"user"</span>)-&gt;at(<span class="literal">"name"</span>)-&gt;get&lt;std::string_view&gt;()
++ <span class="ok">ref to &quot;ann&quot;</span>
++ <span class="err">unexpected cbor::error::incorrect_type</span>
++ <body data-group="console">
+- <h2></h2>

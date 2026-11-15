@@ -1,0 +1,4 @@
+cauto const n = 42; // x & ye> doc->at("a")->get<int>()
+42
+> doc->at("b")
+unexpected cbor::error::key_not_found
