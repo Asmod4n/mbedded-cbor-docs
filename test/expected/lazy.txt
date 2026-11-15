@@ -7,7 +7,8 @@
 + <body data-group="lazy">
 + <script type="module" src="site.js">
 + <pre class="code editable" contenteditable="true"
-+ <span class="l"><span class="comment">// message: {"id": 42}</span></span>
++ <span class="comment">// {"id": 42}</span>
++ <span class="literal">"\xa1\x62\x69\x64\x18\x2a"</span>;
 + cbor::lazy::view(owner)-&gt;at(<span class="literal">"id"</span>)-&gt;get&lt;std::int64_t&gt;()
 + <span class="r comment">// 42</span>
 - Message</label>

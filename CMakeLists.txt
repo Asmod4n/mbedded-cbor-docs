@@ -28,6 +28,10 @@ set(DOCS_JSON ${CMAKE_BINARY_DIR}/docs.json)
 set(DOCS_RECORDS ${CMAKE_BINARY_DIR}/records.txt)
 set(DOCS_MARKED ${CMAKE_BINARY_DIR}/marked.txt)
 set(DOCS_EXAMPLES ${CMAKE_BINARY_DIR}/examples.json)
+set(DOCS_EXAMPLE_BYTES ${CMAKE_BINARY_DIR}/examples.bytes.json)
+find_program(DOCS_NODE NAMES node nodejs REQUIRED)
+set(DOCS_OUTPUT_DIR ${CMAKE_BINARY_DIR}/site)
+set(DOCS_WASM ${DOCS_OUTPUT_DIR}/examples.wasm)
 file(WRITE ${CMAKE_BINARY_DIR}/all.cpp "#include <cbor/cbor.hpp>\n")
 file(GLOB DOCS_HEADERS ${DOCS_HEADER_DIR}/*.hpp)
 file(GLOB DOCS_REFERENCE_TESTS ${mbedded_cbor_SOURCE_DIR}/test/doc_reference_*.cpp)
@@ -60,8 +64,8 @@ add_custom_command(
 
 add_custom_command(
   OUTPUT ${DOCS_RECORDS}
-  COMMAND ${DOCS_JQ} -L ${CMAKE_SOURCE_DIR}/jq -j --slurpfile groups ${CMAKE_SOURCE_DIR}/groups.json ${DOCS_TEST_ARGS} -f ${CMAKE_SOURCE_DIR}/jq/highlight.jq ${DOCS_JSON} > ${DOCS_RECORDS}
-  DEPENDS ${DOCS_JSON} ${CMAKE_SOURCE_DIR}/jq/highlight.jq ${CMAKE_SOURCE_DIR}/jq/snippet.jq ${CMAKE_SOURCE_DIR}/jq/example.jq ${CMAKE_SOURCE_DIR}/groups.json
+  COMMAND ${DOCS_JQ} -L ${CMAKE_SOURCE_DIR}/jq -j --slurpfile groups ${CMAKE_SOURCE_DIR}/groups.json --slurpfile examples ${DOCS_EXAMPLES} --slurpfile bytes ${DOCS_EXAMPLE_BYTES} ${DOCS_TEST_ARGS} -f ${CMAKE_SOURCE_DIR}/jq/highlight.jq ${DOCS_JSON} > ${DOCS_RECORDS}
+  DEPENDS ${DOCS_JSON} ${DOCS_EXAMPLE_BYTES} ${CMAKE_SOURCE_DIR}/jq/code.jq ${CMAKE_SOURCE_DIR}/jq/highlight.jq ${CMAKE_SOURCE_DIR}/jq/snippet.jq ${CMAKE_SOURCE_DIR}/jq/example.jq ${CMAKE_SOURCE_DIR}/groups.json
   COMMENT "The records of the C++ to colour"
   VERBATIM)
 add_custom_command(
@@ -75,6 +79,12 @@ add_custom_command(
   COMMAND ${DOCS_JQ} -L ${CMAKE_SOURCE_DIR}/jq --slurpfile groups ${CMAKE_SOURCE_DIR}/groups.json -f ${CMAKE_SOURCE_DIR}/jq/examples.jq ${DOCS_JSON} > ${DOCS_EXAMPLES}
   DEPENDS ${DOCS_JSON} ${CMAKE_SOURCE_DIR}/jq/examples.jq ${CMAKE_SOURCE_DIR}/jq/example.jq ${CMAKE_SOURCE_DIR}/groups.json
   COMMENT "The examples that run"
+  VERBATIM)
+add_custom_command(
+  OUTPUT ${DOCS_EXAMPLE_BYTES}
+  COMMAND ${DOCS_NODE} ${CMAKE_SOURCE_DIR}/repl/bytes.mjs ${DOCS_WASM} ${DOCS_EXAMPLES} ${DOCS_EXAMPLE_BYTES}
+  DEPENDS ${DOCS_WASM} ${DOCS_EXAMPLES} ${CMAKE_SOURCE_DIR}/repl/bytes.mjs ${CMAKE_SOURCE_DIR}/site/examples.mjs
+  COMMENT "The bytes of the examples"
   VERBATIM)
 
 execute_process(COMMAND git -C ${mbedded_cbor_SOURCE_DIR} log -1 --format=%cs OUTPUT_VARIABLE DOCS_COMMIT_DATE OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
@@ -128,9 +138,9 @@ foreach(page IN LISTS DOCS_PAGES)
   file(MAKE_DIRECTORY ${page_dir})
   add_custom_command(
     OUTPUT ${page_dir}/data.json
-    COMMAND ${DOCS_JQ} -L ${CMAKE_SOURCE_DIR}/jq --arg date ${DOCS_COMMIT_DATE} --arg source "${DOCS_MAN_SOURCE}" --arg page ${page} --slurpfile groups ${CMAKE_SOURCE_DIR}/groups.json --rawfile marked ${DOCS_MARKED} ${DOCS_TEST_ARGS}
+    COMMAND ${DOCS_JQ} -L ${CMAKE_SOURCE_DIR}/jq --arg date ${DOCS_COMMIT_DATE} --arg source "${DOCS_MAN_SOURCE}" --arg page ${page} --slurpfile groups ${CMAKE_SOURCE_DIR}/groups.json --slurpfile examples ${DOCS_EXAMPLES} --slurpfile bytes ${DOCS_EXAMPLE_BYTES} --rawfile marked ${DOCS_MARKED} ${DOCS_TEST_ARGS}
             -f ${CMAKE_SOURCE_DIR}/jq/page.jq ${DOCS_JSON} > ${page_dir}/data.json
-    DEPENDS ${DOCS_JSON} ${DOCS_MARKED} ${CMAKE_SOURCE_DIR}/jq/dedupe.jq ${CMAKE_SOURCE_DIR}/jq/html.jq ${CMAKE_SOURCE_DIR}/jq/page.jq ${CMAKE_SOURCE_DIR}/jq/man.jq ${CMAKE_SOURCE_DIR}/jq/snippet.jq ${CMAKE_SOURCE_DIR}/jq/example.jq ${CMAKE_SOURCE_DIR}/groups.json
+    DEPENDS ${DOCS_JSON} ${DOCS_MARKED} ${DOCS_EXAMPLE_BYTES} ${CMAKE_SOURCE_DIR}/jq/code.jq ${CMAKE_SOURCE_DIR}/jq/dedupe.jq ${CMAKE_SOURCE_DIR}/jq/html.jq ${CMAKE_SOURCE_DIR}/jq/page.jq ${CMAKE_SOURCE_DIR}/jq/man.jq ${CMAKE_SOURCE_DIR}/jq/snippet.jq ${CMAKE_SOURCE_DIR}/jq/example.jq ${CMAKE_SOURCE_DIR}/groups.json
     COMMENT "The data of the page ${page}"
     VERBATIM)
   add_custom_command(
@@ -165,7 +175,6 @@ target_compile_options(write_pages PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(write_pages PRIVATE simdjson::simdjson)
 
 
-set(DOCS_OUTPUT_DIR ${CMAKE_BINARY_DIR}/site)
 set(DOCS_PAGE_FILES)
 foreach(page IN LISTS DOCS_PAGES)
   list(APPEND DOCS_PAGE_FILES ${DOCS_OUTPUT_DIR}/${page}.html)
@@ -178,7 +187,6 @@ add_custom_command(
   DEPENDS write_pages ${CMAKE_SOURCE_DIR}/site/style.css ${CMAKE_SOURCE_DIR}/site/site.js ${CMAKE_SOURCE_DIR}/site/examples.mjs
   COMMENT "The pages of the headers"
   VERBATIM)
-set(DOCS_WASM ${DOCS_OUTPUT_DIR}/examples.wasm)
 file(GLOB_RECURSE DOCS_WASM_SOURCES ${CMAKE_SOURCE_DIR}/repl/*.cpp ${CMAKE_SOURCE_DIR}/repl/*.hpp)
 add_custom_command(
   OUTPUT ${DOCS_WASM}
@@ -250,7 +258,6 @@ target_link_libraries(highlight PRIVATE ${DOCS_CLANG_LIBRARY})
 add_test(NAME highlight_records
   COMMAND ${CMAKE_COMMAND} -DHIGHLIGHT=$<TARGET_FILE:highlight> -DDIR=${CMAKE_SOURCE_DIR}/test/highlight -P ${CMAKE_SOURCE_DIR}/test/check_highlight.cmake)
 
-find_program(DOCS_NODE NAMES node nodejs REQUIRED)
 add_test(NAME examples_run
   COMMAND ${DOCS_NODE} ${CMAKE_SOURCE_DIR}/test/check_examples.mjs ${DOCS_WASM} ${DOCS_EXAMPLES} ${DOCS_OUTPUT_DIR} ${DOCS_HEADER_DIR}/error.hpp)
 add_test(NAME links_of_the_site COMMAND ${DOCS_NODE} ${CMAKE_SOURCE_DIR}/test/check_links.mjs ${DOCS_OUTPUT_DIR})

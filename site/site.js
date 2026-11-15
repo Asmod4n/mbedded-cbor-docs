@@ -42,27 +42,52 @@ const boxOf = box => {
 const resultGap = "   ";
 const resultTail = /\s{2,}\/\/ .*$/;
 const codeLinesOf = pre => pre.innerText.replace(/ /g, " ").split("\n").map(l => l.replace(/\s+$/, "")).filter(l => l.trim());
-const messageBytes = line => {
-  const m = /^\/\/ (message|bytes): (.*)$/.exec(line);
-  if (!m) throw new Error("the first line is a comment: // message: or // bytes:");
-  return m[1] === "message" ? Uint8Array.from(encoded(JSON.parse(m[2]))) : bytesOf(m[2]);
+const literalBytes = text => {
+  const out = [];
+  for (const piece of text.matchAll(/"((?:[^"\\]|\\.)*)"/g)) {
+    const s = piece[1];
+    for (let i = 0; i < s.length; i++) {
+      if (s[i] !== "\\") { out.push(...new TextEncoder().encode(s[i])); continue; }
+      const c = s[++i];
+      if (c === "x") { out.push(parseInt(s.slice(i + 1, i + 3), 16)); i += 2; }
+      else out.push({ n: 10, t: 9, r: 13, 0: 0, "\\": 92, '"': 34, "'": 39 }[c] ?? c.charCodeAt(0));
+    }
+  }
+  return Uint8Array.from(out);
+};
+const dataLength = lines => {
+  const start = lines.findIndex(l => /^std::string bytes =/.test(l));
+  if (start < 0) throw new Error("the example starts with std::string bytes = followed by the bytes as a string literal");
+  let end = start;
+  while (end < lines.length && !/;\s*(\/\/.*)?$/.test(lines[end])) end++;
+  return { start, end: end + 1 };
 };
 const played = async pre => {
   const lines = codeLinesOf(pre);
-  const old = new Map([...pre.querySelectorAll(".l")].slice(1).map(l => {
+  const old = new Map([...pre.querySelectorAll(".l")].map(l => {
     const copy = l.cloneNode(true);
     copy.querySelector(".r")?.remove();
     return [copy.textContent.trimEnd(), copy.innerHTML.trimEnd()];
   }));
-  const calls = lines.slice(1).map(l => l.replace(resultTail, ""));
-  let results;
-  try { results = await (await run)(messageBytes(lines[0]), calls.join("\n"), group); }
-  catch (e) { results = calls.map(() => "fault: " + e.message); }
+  let head, calls, results;
+  try {
+    const { start, end } = dataLength(lines);
+    const adopt = /^auto const doc = cbor::lazy::adopt\(/.test(lines[end] ?? "") ? 1 : 0;
+    head = lines.slice(0, end + adopt);
+    calls = lines.slice(end + adopt).map(l => l.replace(resultTail, ""));
+    results = await (await run)(literalBytes([lines[start].replace(/\s*\/\/.*$/, ""), ...lines.slice(start + 1, end)].join("\n")), calls.map(c => c.replace(/;\s*$/, "")).join("\n"), group);
+  } catch (e) {
+    head = lines.slice(0, 1);
+    calls = lines.slice(1).map(l => l.replace(resultTail, ""));
+    results = calls.map(() => "fault: " + e.message);
+  }
   const widest = Math.max(0, ...calls.map(c => c.length));
-  pre.innerHTML = '<span class="l"><span class="comment">' + escaped(lines[0]) + "</span></span>" +
-    calls.map((c, i) => "\n" + '<span class="l">' + (old.get(c) ?? escaped(c)) + " ".repeat(widest - c.length) + resultGap +
-      '<span class="r comment' + (/^(fault|unexpected)/.test(results[i] ?? "") ? " err" : "") + '">// ' + escaped(results[i] ?? "") + "</span></span>").join("");
+  const line = c => '<span class="l">' + (old.get(c) ?? escaped(c));
+  pre.innerHTML = head.map(h => line(h) + "</span>").join("\n") + (calls.length ? "\n" : "") +
+    calls.map((c, i) => line(c) + " ".repeat(widest - c.length) + resultGap +
+      '<span class="r comment' + (/^(fault|unexpected)/.test(results[i] ?? "") ? " err" : "") + '">// ' + escaped(results[i] ?? "") + "</span></span>").join("\n");
 };
+
 document.querySelectorAll(".example[data-play]").forEach(box => {
   const pre = box.querySelector("pre"), button = box.querySelector("button.run");
   button.hidden = false;

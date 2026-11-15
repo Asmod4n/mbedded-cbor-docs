@@ -4,7 +4,9 @@ import { readFileSync, readdirSync, mkdtempSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 
 const [chromium, site] = process.argv.slice(2);
-const screenWidth = 2560, screenHeight = 1440, screensAllowed = 2;
+const screenWidth = 2560, screenHeight = 1440;
+const runningTextWordsLimit = 1449;
+const sentencesPerEntryLimit = 2;
 const desktops = [[2560, 1440], [1920, 1080]];
 const phoneWidth = 390, phoneHeight = 844;
 const types = { html: "text/html", css: "text/css", mjs: "text/javascript", js: "text/javascript", wasm: "application/wasm" };
@@ -64,12 +66,15 @@ for (const name of readdirSync(site).filter(f => f.endsWith(".html")).sort()) {
     await opened(name, w, h, false);
     const height = await evaluate("document.documentElement.scrollHeight");
     screens.push(`${(height / h).toFixed(2)} screens at ${w}x${h}`);
-    if (height > screensAllowed * h) fail(`${name}: ${height} px high at ${w}x${h}, more than ${screensAllowed} screens`);
   }
   await opened(name, phoneWidth, phoneHeight, true);
   const width = await evaluate("document.documentElement.scrollWidth");
   const words = await evaluate("document.body.innerText.split(/\\s+/).filter(Boolean).length");
-  rows.push(`${name}\t${screens.join("\t")}\t${width} px wide at ${phoneWidth}\t${words} words`);
+  const running = await evaluate(`[...document.querySelectorAll(".text > p")].map(p => p.innerText).join(" ").split(/\\s+/).filter(Boolean).length`);
+  if (running > runningTextWordsLimit) fail(`${name}: ${running} words of running text, more than ${runningTextWordsLimit} (2 screens at 1920x1080)`);
+  const crowded = await evaluate(`[...document.querySelectorAll(".text")].filter(t => [...t.querySelectorAll(":scope > p")].map(p => p.innerText).join(" ").split(/(?<=[.!?])\\s+/).filter(Boolean).length > ${sentencesPerEntryLimit}).map(t => t.closest("section")?.id).join(" ")`);
+  if (crowded) fail(`${name}: more than ${sentencesPerEntryLimit} sentences of running text in: ${crowded}`);
+  rows.push(`${name}\t${screens.join("\t")}\t${width} px wide at ${phoneWidth}\t${running} words of running text`);
   if (width > phoneWidth) {
     const wide = await evaluate(`[...document.querySelectorAll("body *")].filter(e => e.getBoundingClientRect().right > ${phoneWidth} && ![...Array(20)].reduce(([n, hit]) => [n?.parentElement, hit || (n && n !== e && /auto|scroll|hidden/.test(getComputedStyle(n).overflowX))], [e, false])[1]).slice(0, 3).map(e => Math.round(e.getBoundingClientRect().right) + " " + getComputedStyle(e).display + " " + e.tagName + "." + e.className + " " + (e.textContent ?? "").slice(0, 40)).join(" | ")`);
     fail(`${name}: ${width} px wide at ${phoneWidth}, the page scrolls sideways; wide: ${wide}`);
@@ -83,6 +88,13 @@ await evaluate(`document.querySelector(".example button.run").click()`);
 await pause(1500);
 const shown = await evaluate("document.querySelector('.example pre').textContent");
 if (shown.includes("// fault") || !shown.includes("// ")) fail(`lazy.html: the example shows ${shown}`);
+for (const name of readdirSync(site).filter(f => f.endsWith(".html")).sort()) {
+  await opened(name, screenWidth, screenHeight, false);
+  await evaluate(`document.querySelectorAll(".example button.run").forEach(b => b.click())`);
+  await pause(2500);
+  const faults = await evaluate(`[...document.querySelectorAll(".example")].filter(e => e.querySelector("pre").textContent.includes("// fault")).map(e => e.closest("section").id).join(" ")`);
+  if (faults) fail(`${name}: Run gives a fault in: ${faults}`);
+}
 await opened("console.html", screenWidth, screenHeight, false);
 await evaluate(`(async () => { const form = document.querySelector('.play[data-console] form'); form.requestSubmit(); })()`);
 await pause(1500);

@@ -3,10 +3,13 @@ include "snippet";
 include "example";
 include "dedupe";
 include "html";
+include "code";
+def man_entry($examples; $bytes): (spec) as $s | example_item($examples; $bytes; .qname) as $item | if $s == null or $item == null then . else . + {example: (plain_code($s; $item; man_width) | join("\n"))} end;
 def listed: [ $groups[0].groups[] | {name, title} ];
 def marked: $ARGS.named.marked | split("\u001e");
 . as $docs
 | ($docs.entries | length) as $n
+| ($docs.entries | map(man_entry($examples[0]; $bytes[0]))) as $man_entries
 | ($groups[0].groups | length) as $count
 | entries_deduped([ $groups[0].groups[] | .name as $name | $docs.entries[] | select(.group == $name) ]).out as $bodies
 | briefs_deduped([ $groups[0].groups[] | .name as $name | $docs.entries[] | select(.group == $name) ]).out as $briefs
@@ -23,8 +26,8 @@ else
          has_body: (($bodies[.id] // "" | body_html(sentences_per_entry)) != ""), has_example: (.example != "" and $s == null)} + play_fields ]) as $entries
   | if ($entries | length) == 0 then error("the group " + $page + " has no entry") else . end
   | snippet($page) as $snippet
-  | ([ $docs.entries[] | select(.group == $page and (.kind | IN("CXXRecordDecl", "ClassTemplateDecl"))) ]) as $classes
+  | ([ $man_entries[] | select(.group == $page and (.kind | IN("CXXRecordDecl", "ClassTemplateDecl"))) ]) as $classes
   | {name: $page, title: ($page + " - mbedded-cbor"), brief: $g.title, groups: listed, snippet_html: marked[2 * $n + 1 + $gi], has_snippet: ($snippet != ""), entries: $entries,
-     rows: (group_page($g; $docs.entries; $snippet) + ([ $classes[] | class_page(.; $docs.entries; $docs.errors; $page) ] | add // []))}
+     rows: (group_page($g; $man_entries; $snippet) + ([ $classes[] | class_page(.; $man_entries; $docs.errors; $page) ] | add // []))}
     + (if $page == "errors" then {errors: .errors} else {} end)
 end

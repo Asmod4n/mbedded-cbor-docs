@@ -145,14 +145,20 @@ std::string play_highlighted(const CXIndex index, const std::string_view text)
         at = end + 1;
     }
     std::size_t widest = 0;
-    for (std::size_t i = 1; i < lines.size(); ++i)
-        widest = std::max(widest, lines[i].substr(0, lines[i].find(call_result_separator)).size());
-    std::string out = "<span class=\"l\"><span class=\"comment\">// " + html_escaped(lines.front()) + "</span></span>";
-    for (std::size_t i = 1; i < lines.size(); ++i) {
+    for (const std::string_view line : lines)
+        if (line.find(call_result_separator) != std::string_view::npos)
+            widest = std::max(widest, line.substr(0, line.find(call_result_separator)).size());
+    std::string out;
+    for (std::size_t i = 0; i < lines.size(); ++i) {
         const std::size_t cut = lines[i].find(call_result_separator);
+        if (!out.empty()) out += '\n';
+        if (cut == std::string_view::npos) {
+            out += "<span class=\"l\">" + code_highlighted(index, lines[i]) + "</span>";
+            continue;
+        }
         const std::string_view call = lines[i].substr(0, cut);
         const std::string_view result = cut == std::string_view::npos ? std::string_view{} : lines[i].substr(cut + 1);
-        out += "\n<span class=\"l\">" + code_highlighted(index, call) + std::string(widest - call.size() + result_gap, ' ') +
+        out += "<span class=\"l\">" + code_highlighted(index, call) + std::string(widest - call.size() + result_gap, ' ') +
                "<span class=\"r comment\">// " + html_escaped(result) + "</span></span>";
     }
     return out;
