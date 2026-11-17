@@ -21,11 +21,7 @@ inline std::string notation_of(std::string_view const encoded)
 inline std::string item_notation(cbor::item const &node)
 {
     std::string encoded;
-    auto written = cbor::encode(node, encoded);
-    if (!written && written.error() == cbor::error::unsupported_value) {
-        encoded.clear();
-        written = cbor::encode(node, encoded, cbor::cycles);
-    }
+    auto const written = cbor::encode(encoded, node);
     if (!written) [[unlikely]]
         return kind<cbor::error>::text(written.error());
     return notation_of(encoded);
@@ -33,7 +29,7 @@ inline std::string item_notation(cbor::item const &node)
 
 inline std::string lazy_notation(cbor::lazy const &node)
 {
-    auto const tree = node.clone();
+    auto const tree = node.to_item();
     if (!tree) [[unlikely]]
         return kind<cbor::error>::text(tree.error());
     return item_notation(**tree);
@@ -48,12 +44,16 @@ struct kind<cbor::type> {
     }
 };
 
+struct edn_literal {
+    std::string encoded;
+};
+
 template <>
-struct kind<cbor::key> {
-    static constexpr std::string_view name = "cbor::key";
-    static std::string text(cbor::key const k)
+struct kind<edn_literal> {
+    static constexpr std::string_view name = "cbor::edn_literal";
+    static std::string text(edn_literal const &v)
     {
-        return "cbor::key{" + number_text(k.number) + "}";
+        return "edn_literal of " + notation_of(v.encoded);
     }
 };
 

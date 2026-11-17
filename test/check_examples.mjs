@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
-import { encoded, bytesOf, instantiated } from "../site/examples.mjs";
+import { bytesOf, instantiated } from "../site/examples.mjs";
 
 const [wasm, examples, site, header] = process.argv.slice(2);
-const { run, completed } = await instantiated(readFileSync(wasm));
+const { run, completed, diag2cbor } = await instantiated(readFileSync(wasm));
 const flat = s => s.replace(/\s+/g, " ").trim();
 const decoded = s => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
 const shown = new Map();
@@ -12,7 +12,7 @@ const shownOf = page => {
 };
 let wrong = 0, count = 0;
 for (const e of JSON.parse(readFileSync(examples, "utf8"))) {
-  const bytes = e.message !== null ? Uint8Array.from(encoded(JSON.parse(e.message))) : bytesOf(e.bytes);
+  const bytes = e.message !== null ? diag2cbor(e.message) : bytesOf(e.bytes);
   const out = await run(bytes, e.calls.map(c => c.call).join("\n"), e.group);
   const dump = shownOf(e.group);
   e.calls.forEach((c, i) => {
@@ -60,7 +60,7 @@ const cases = [
   [old, "by", ["bytes"]],
   // An array takes indexes and paths with indexes; it has no entries and no scalar to get.
   [array, "doc->", ["doc->at(0)", "doc->at_path<\"$\">()", "doc->size()", "doc->empty()", "doc->type()", "doc->elements()",
-    "doc->clone()", "doc->at(1)", "doc->at(2)", "doc->at_path<\"$[0]\">()", "doc->at_path<\"$[1]\">()",
+    "doc->to_item()", "doc->at(1)", "doc->at(2)", "doc->at_path<\"$[0]\">()", "doc->at_path<\"$[1]\">()",
     "doc->at_path<\"$[2]\">()", "doc->at_path<\"$[*]\", cbor::nodelist>()"]],
   [array, "doc->at(", ["doc->at(0)", "doc->at(1)", "doc->at(2)"]],
   [array, "doc->get<", []],
@@ -73,7 +73,7 @@ const cases = [
   [map, "doc->at(\"n", ["doc->at(\"name\")"]],
   [map, "doc->get<", []],
   [map, "doc->at(\"tags\")->", ["doc->at(\"tags\")->at(0)", "doc->at(\"tags\")->at_path<\"$\">()", "doc->at(\"tags\")->size()",
-    "doc->at(\"tags\")->empty()", "doc->at(\"tags\")->type()", "doc->at(\"tags\")->elements()", "doc->at(\"tags\")->clone()",
+    "doc->at(\"tags\")->empty()", "doc->at(\"tags\")->type()", "doc->at(\"tags\")->elements()", "doc->at(\"tags\")->to_item()",
     "doc->at(\"tags\")->at(1)", "doc->at(\"tags\")->at_path<\"$[0]\">()", "doc->at(\"tags\")->at_path<\"$[1]\">()",
     "doc->at(\"tags\")->at_path<\"$[*]\", cbor::nodelist>()"]],
   [map, "doc->at_path<\"$.", ["doc->at_path<\"$.name\">()", "doc->at_path<\"$.age\">()", "doc->at_path<\"$.tags\">()"]],
@@ -84,10 +84,9 @@ const cases = [
     "doc->at_path<\"$.tags[*]\", cbor::nodelist>()"]],
   [map, "doc->at(doc->at(\"n", ["doc->at(doc->at(\"name\")"]],
   [map, "std::move(doc->at(\"n", ["std::move(doc->at(\"name\")", "std::move(doc->at(\"name\"))"]],
-  [map, "cbor::key{doc->ty", ["cbor::key{doc->type()"]],
-  [map, "doc->clone()", ["doc->clone().value()->type", "doc->clone().value()->get<cbor::type::map>()",
-    "doc->clone().value()->additional_information"]],
-  [map, "doc->clone()->", []],
+  [map, "doc->to_item()", ["doc->to_item().value()->get<std::ranges::stride_view<std::ranges::adjacent_view<std::span<cbor::item const>, 2>>>()", "doc->to_item().value()->type()",
+    "doc->to_item().value()->additional_information"]],
+  [map, "doc->to_item()->", []],
   [map, "doc->nothing", []],
   // A text gives only a std::string_view; it has no index and no key.
   [text, "doc->get<", ["doc->get<std::string_view>()"]],
@@ -110,7 +109,7 @@ const open = line => { let depth = 0, quoted = false; for (let i = 0; i < line.l
   if (c === '"') quoted = true; else if ("([{<".includes(c)) depth++; else if (")]}>".includes(c)) depth--; } return depth > 0 || quoted; };
 for (const [{ doc }, lines, expected] of cases) {
   count++;
-  const bytes = Uint8Array.from(encoded(doc));
+  const bytes = diag2cbor(JSON.stringify(doc));
   const { found, trapped } = await completed(bytes, lines, "lazy");
   const history = lines.split("\n").slice(0, -1);
   if (trapped || JSON.stringify(found) !== JSON.stringify(expected)) {
@@ -128,7 +127,7 @@ for (const [{ doc }, lines, expected] of cases) {
 // A document of 10,000 elements still offers every member, not only the first 40 indexes.
 {
   count++;
-  const bytes = Uint8Array.from(encoded(Array.from({ length: 10000 }, (_, i) => i)));
+  const bytes = diag2cbor(JSON.stringify(Array.from({ length: 10000 }, (_, i) => i)));
   const { found } = await completed(bytes, "doc->", "lazy");
   if (!found.includes("doc->size()") || found.length !== 40) {
     wrong++;

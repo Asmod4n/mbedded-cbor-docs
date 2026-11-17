@@ -123,7 +123,7 @@ void lazy_index_candidates(value const &self, std::string_view const partial, ca
             if (auto const quoted = console_string(**text); quoted && !taken(called_with(*quoted)))
                 return;
         } else if (auto const number = e->first.get<std::int64_t>()) {
-            if (!taken(called_with("cbor::key{" + std::to_string(*number) + "}")))
+            if (!taken(called_with(std::to_string(*number))))
                 return;
         }
     }
@@ -222,10 +222,19 @@ void indexes_candidates(value const &self, std::string_view const partial, candi
             return;
 }
 
+constexpr std::string_view item_read_types[] = {
+    "std::span<cbor::item const>",
+    "std::ranges::stride_view<std::ranges::adjacent_view<std::span<cbor::item const>, 2>>",
+    "std::pair<std::uint64_t, cbor::item const *>",
+};
+
 inline void item_get_candidates(value const &, std::string_view, candidate_taken const &taken)
 {
-    for (std::string_view const t : type_names)
-        if (!taken("get<cbor::type::" + std::string(t) + ">()"))
+    for (std::string_view const t : lazy_read_types)
+        if (!taken("get<" + std::string(t) + ">()"))
+            return;
+    for (std::string_view const t : item_read_types)
+        if (!taken("get<" + std::string(t) + ">()"))
             return;
 }
 

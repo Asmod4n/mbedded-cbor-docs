@@ -1,9 +1,7 @@
-cbor::cycles_t.3
 cbor::describe_members.3
-cbor::encoder.3
+cbor::edn_literal.3
 cbor::error_category.3
 cbor::fixed_string.3
-cbor::iov_writer.3
 cbor::item.3
 cbor::lazy.3
 cbor::lazy_elements.3
@@ -11,12 +9,15 @@ cbor::lazy_entries.3
 cbor::limits.3
 cbor::member.3
 cbor::owning.3
+cbor::path.3
 cbor::path::query.3
 cbor::ref.3
+cbor::schema.3
 cbor::schema::accessor.3
 cbor::sequence.3
 cbor::sequence::iterator.3
 cbor::sequence_reader.3
+cbor::static_dictionary.3
 cbor::structs.3
 cbor::tag.3
 cbor::typed_array_view.3

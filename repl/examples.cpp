@@ -131,6 +131,11 @@ __attribute__((export_name("run"))) char *run(char const *const bytes, std::size
     return block_of(lines_run({bytes, bytes_size}, {lines, lines_size}, {group, group_size}));
 }
 
+__attribute__((export_name("diag2cbor"))) char *diag2cbor(char const *const text, std::size_t const text_size)
+{
+    return block_of(cbor::diag2cbor({text, text_size}).value_or(std::string()));
+}
+
 __attribute__((export_name("complete"))) char *complete(char const *const bytes, std::size_t const bytes_size,
                                                         char const *const lines, std::size_t const lines_size,
                                                         char const *const group, std::size_t const group_size)

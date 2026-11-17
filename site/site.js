@@ -1,4 +1,4 @@
-import { encoded, hexOf, bytesOf, instantiated } from "./examples.mjs";
+import { hexOf, bytesOf, instantiated } from "./examples.mjs";
 
 const group = document.body.dataset.group;
 const escaped = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
@@ -13,8 +13,8 @@ const boxOf = box => {
   const message = box.querySelector("[data-message]"), notation = box.querySelector("[data-notation]");
   const hex = box.querySelector("[data-bytes]");
   const bytes = () => bytesOf(hex.value);
-  const fromMessage = () => {
-    try { hex.value = hexOf(encoded(JSON.parse(message.value))); message.removeAttribute("aria-invalid"); }
+  const fromMessage = async () => {
+    try { hex.value = hexOf((await module).diag2cbor(message.value)); message.removeAttribute("aria-invalid"); }
     catch { message.setAttribute("aria-invalid", "true"); }
   };
   const toNotation = async () => {
@@ -33,9 +33,9 @@ const boxOf = box => {
     }
     catch (e) { notation.value = e.message; }
   };
-  if (message) { message.addEventListener("input", fromMessage); if (!hex.value) fromMessage(); }
+  if (message) message.addEventListener("input", fromMessage);
   hex.addEventListener("input", toNotation);
-  toNotation();
+  (message && !hex.value ? fromMessage() : Promise.resolve()).then(toNotation);
   return { message, hex, bytes, fromMessage };
 };
 

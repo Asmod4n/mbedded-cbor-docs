@@ -12,6 +12,8 @@
 namespace site
 {
 
+constexpr std::string_view edn_suffix = "_edn";
+
 struct variable {
     std::string name;
     value v;
@@ -356,6 +358,13 @@ struct parser {
             auto t = string_read();
             if (!t) [[unlikely]]
                 return std::unexpected(t.error());
+            if (rest.starts_with(edn_suffix)) {
+                rest.remove_prefix(edn_suffix.size());
+                auto encoded = cbor::diag2cbor(*t);
+                if (!encoded) [[unlikely]]
+                    return std::unexpected("the EDN text does not compile: " + kind<cbor::error>::text(encoded.error()));
+                return value_of(edn_literal{std::move(*encoded)});
+            }
             return value_of(std::move(*t));
         }
         spaces_skip();

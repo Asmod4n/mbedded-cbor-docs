@@ -43,17 +43,18 @@ inline result item_get(call const &c)
         return std::unexpected(node.error());
     if (auto const ok = arguments_counted(c, 0); !ok) [[unlikely]]
         return std::unexpected(ok.error());
-    constexpr std::string_view prefix = "cbor::type::";
-    if (c.template_arguments.size() != 1 || !c.template_arguments.front().starts_with(prefix)) [[unlikely]]
-        return std::unexpected("get takes one cbor::type: get<cbor::type::array>()");
-    auto const found = std::ranges::find(type_names, std::string_view(c.template_arguments.front()).substr(prefix.size()));
-    if (found == std::end(type_names)) [[unlikely]]
-        return std::unexpected(c.template_arguments.front() + " is not a cbor::type");
-    return type_typed(static_cast<std::size_t>(found - std::begin(type_names)),
-                      [&]<cbor::type K>(std::integral_constant<cbor::type, K>) -> result {
-                          return expected_view_of(*c.self, (*node)->template get<K>());
-                      },
-                      std::make_index_sequence<std::size(type_names)>{});
+    if (c.template_arguments.size() != 1) [[unlikely]]
+        return std::unexpected("get takes one type: get<std::int64_t>()");
+    if (c.template_arguments.front() == kind<std::span<cbor::item const>>::name)
+        return expected_view_of(*c.self, (*node)->get<std::span<cbor::item const>>());
+    if (c.template_arguments.front() == kind<item_pairs>::name)
+        return expected_view_of(*c.self, (*node)->get<item_pairs>());
+    return typed(c.template_arguments.front(), [&]<class T>(type_tag<T>) -> result {
+        if constexpr (requires { (*node)->template get<T>(); })
+            return expected_view_of(*c.self, (*node)->template get<T>());
+        else
+            return std::unexpected("cbor::item.get does not take " + c.template_arguments.front());
+    });
 }
 
 inline result item_type_of(call const &c)
@@ -63,7 +64,7 @@ inline result item_type_of(call const &c)
     auto const node = node_of(*c.self);
     if (!node) [[unlikely]]
         return std::unexpected(node.error());
-    return value_of((*node)->type);
+    return value_of((*node)->type());
 }
 
 inline result item_additional_information(call const &c)
@@ -103,6 +104,33 @@ inline result nodes_index(call const &c)
     if (*i >= (*self)->size()) [[unlikely]]
         return std::unexpected("the index is outside the span");
     return node_view_of(*c.self, (**self)[static_cast<std::size_t>(*i)]);
+}
+
+inline result pairs_index(call const &c)
+{
+    auto const self = self_of<item_pairs>(c);
+    if (!self) [[unlikely]]
+        return std::unexpected(self.error());
+    auto const i = unsigned_argument(c, 0);
+    if (!i) [[unlikely]]
+        return std::unexpected(i.error());
+    if (*i >= std::ranges::size(**self)) [[unlikely]]
+        return std::unexpected("the index is outside the stride_view");
+    return view_of(*c.self, item_pair((**self)[static_cast<std::ptrdiff_t>(*i)]));
+}
+
+inline result pair_get(call const &c)
+{
+    auto const pair = argument_of<item_pair>(c, 0, "a std::tuple<cbor::item const &, cbor::item const &>");
+    if (!pair) [[unlikely]]
+        return std::unexpected(pair.error());
+    if (c.arguments.size() != 1 || c.template_arguments.size() != 1) [[unlikely]]
+        return std::unexpected("std::get takes one index and one tuple: std::get<0>(pair)");
+    if (c.template_arguments.front() == "0")
+        return node_view_of(c.arguments.front(), std::get<0>(**pair));
+    if (c.template_arguments.front() == "1")
+        return node_view_of(c.arguments.front(), std::get<1>(**pair));
+    return std::unexpected("std::get takes the index 0 or 1 here");
 }
 
 inline result reference_get(call const &c)
@@ -152,35 +180,18 @@ inline result encoded_cbor_data_item_found(call const &c)
     return expected_view_of(c.arguments.front(), cbor::encoded_cbor_data_item(**tree, **tagged));
 }
 
-template <class... Option>
-result encode_made_with(call const &c, Option const... option)
-{
-    auto const root = argument_of<cbor::item>(c, 0, "a cbor::item");
-    if (!root) [[unlikely]]
-        return std::unexpected(root.error());
-    if (auto *const target = changed_if<std::string>(c.arguments[1]))
-        return value_of(cbor::encode(**root, *target, option...));
-    if (auto const *const target = held_if<std::span<char>>(c.arguments[1]))
-        return value_of(cbor::encode(**root, *target, option...));
-    return std::unexpected("the argument 2 is not a std::string or a std::span<char>");
-}
-
 inline result encode_made(call const &c)
 {
-    if (c.arguments.size() == 3) {
-        auto const cycles = argument_of<cbor::cycles_t>(c, 2, "cbor::cycles");
-        if (!cycles) [[unlikely]]
-            return std::unexpected(cycles.error());
-        return encode_made_with(c, **cycles);
-    }
     if (auto const ok = arguments_counted(c, 2); !ok) [[unlikely]]
         return std::unexpected(ok.error());
-    return encode_made_with(c);
-}
-
-inline result cycles_named(call const &)
-{
-    return value_of(cbor::cycles);
+    auto const root = argument_of<cbor::item>(c, 1, "a cbor::item");
+    if (!root) [[unlikely]]
+        return std::unexpected(root.error());
+    if (auto *const target = changed_if<std::string>(c.arguments[0]))
+        return value_of(cbor::encode(*target, **root));
+    if (auto const *const target = held_if<std::span<char>>(c.arguments[0]))
+        return value_of(cbor::encode(*target, **root));
+    return std::unexpected("the argument 1 is not a std::string or a std::span<char>");
 }
 
 template <class T>
@@ -311,34 +322,6 @@ inline result simple_value_made(call const &c)
     return value_of(cbor::simple_value{*n});
 }
 
-template <class Target, class Argument>
-value encoder_value(std::shared_ptr<void> owner, Argument &&argument)
-{
-    return {kind<encoder_over<Target>>::name, type_of<encoder_over<Target>>(),
-            std::make_shared<encoder_over<Target>>(std::move(owner), std::forward<Argument>(argument)),
-            text_of<encoder_over<Target>>, false};
-}
-
-inline result encoder_made(call const &c)
-{
-    if (auto const ok = arguments_counted(c, 1); !ok) [[unlikely]]
-        return std::unexpected(ok.error());
-    value const &a = c.arguments.front();
-    if (auto *const target = changed_if<std::string>(a))
-        return encoder_value<std::string>(a.held, *target);
-    if (auto const *const target = held_if<std::span<char>>(a))
-        return encoder_value<std::span<char>>(a.held, *target);
-    return std::unexpected("cbor::encoder takes a std::string or a std::span<char> here");
-}
-
-template <class Target>
-std::expected<cbor::encoder<Target> *, fault> encoder_of(call const &c)
-{
-    if (c.self == nullptr || changed_if<encoder_over<Target>>(*c.self) == nullptr) [[unlikely]]
-        return std::unexpected("the call needs an object of its class");
-    return &changed_if<encoder_over<Target>>(*c.self)->encoder;
-}
-
 template <class F>
 result unsigned_typed(call const &c, F const f)
 {
@@ -359,139 +342,20 @@ result unsigned_typed(call const &c, F const f)
                            ", and the call compiles only for an unsigned integer type: std::uint8_t{5}");
 }
 
-template <class Target>
-result encoder_unsigned_integer(call const &c)
-{
-    auto const e = encoder_of<Target>(c);
-    if (!e) [[unlikely]]
-        return std::unexpected(e.error());
-    return unsigned_typed(c, [&](auto const n) { return value_of((*e)->unsigned_integer(n)); });
-}
-
-template <class Target>
-result encoder_negative_integer(call const &c)
-{
-    auto const e = encoder_of<Target>(c);
-    if (!e) [[unlikely]]
-        return std::unexpected(e.error());
-    return unsigned_typed(c, [&](auto const n) { return value_of((*e)->negative_integer(n)); });
-}
-
-template <class Target>
-result encoder_byte_string(call const &c)
-{
-    auto const e = encoder_of<Target>(c);
-    if (!e) [[unlikely]]
-        return std::unexpected(e.error());
-    if (auto const ok = arguments_counted(c, 1); !ok) [[unlikely]]
-        return std::unexpected(ok.error());
-    value const &a = c.arguments.front();
-    if (auto const *const bytes = held_if<std::span<std::byte const>>(a))
-        return value_of((*e)->byte_string(*bytes));
-    if (auto const *const bytes = held_if<std::span<std::byte const, 2>>(a))
-        return value_of((*e)->byte_string(*bytes));
-    if (auto const *const bytes = held_if<cbor::ref<std::span<std::byte const>>>(a))
-        return value_of((*e)->byte_string(*bytes));
-    return std::unexpected("byte_string takes a std::span<std::byte const> or a cbor::ref of it here");
-}
-
-template <class Target>
-result encoder_text_string(call const &c)
-{
-    auto const e = encoder_of<Target>(c);
-    if (!e) [[unlikely]]
-        return std::unexpected(e.error());
-    if (auto const ok = arguments_counted(c, 1); !ok) [[unlikely]]
-        return std::unexpected(ok.error());
-    value const &a = c.arguments.front();
-    if (auto const *const text = held_if<std::string>(a))
-        return value_of((*e)->text_string(std::string_view(*text)));
-    if (auto const *const text = held_if<std::string_view>(a))
-        return value_of((*e)->text_string(*text));
-    if (auto const *const text = held_if<std::shared_ptr<std::string const>>(a))
-        return value_of((*e)->text_string(*text));
-    if (auto const *const text = held_if<cbor::ref<std::string_view>>(a))
-        return value_of((*e)->text_string(*text));
-    return std::unexpected("text_string takes a text, a std::shared_ptr<std::string const> or a cbor::ref here");
-}
-
-template <class Target, auto Member>
-result encoder_head(call const &c)
-{
-    auto const e = encoder_of<Target>(c);
-    if (!e) [[unlikely]]
-        return std::unexpected(e.error());
-    if (auto const ok = arguments_counted(c, 1); !ok) [[unlikely]]
-        return std::unexpected(ok.error());
-    auto const n = unsigned_argument(c, 0);
-    if (!n) [[unlikely]]
-        return std::unexpected(n.error());
-    return value_of(((*e)->*Member)(*n));
-}
-
-template <class Target>
-result encoder_simple_value(call const &c)
-{
-    auto const e = encoder_of<Target>(c);
-    if (!e) [[unlikely]]
-        return std::unexpected(e.error());
-    auto const v = argument_of<cbor::simple_value>(c, 0, "a cbor::simple_value");
-    if (!v || c.arguments.size() != 1) [[unlikely]]
-        return std::unexpected("simple_value takes one cbor::simple_value");
-    return value_of((*e)->simple_value(**v));
-}
-
-template <class Target>
-result encoder_floating_point(call const &c)
-{
-    auto const e = encoder_of<Target>(c);
-    if (!e) [[unlikely]]
-        return std::unexpected(e.error());
-    if (auto const ok = arguments_counted(c, 1); !ok) [[unlikely]]
-        return std::unexpected(ok.error());
-    if (auto const *const f = held_if<float>(c.arguments.front()))
-        return value_of((*e)->floating_point(*f));
-    if (auto const *const d = held_if<double>(c.arguments.front()))
-        return value_of((*e)->floating_point(*d));
-    return std::unexpected("floating_point takes a float or a double");
-}
-
-template <class Target>
-result encoder_typed_array(call const &c)
-{
-    auto const e = encoder_of<Target>(c);
-    if (!e) [[unlikely]]
-        return std::unexpected(e.error());
-    auto const v = argument_of<cbor::typed_array>(c, 0, "a cbor::typed_array");
-    if (!v || c.arguments.size() != 1) [[unlikely]]
-        return std::unexpected("typed_array takes one cbor::typed_array");
-    return value_of((*e)->typed_array(**v));
-}
-
-template <class Target>
-result encoder_finish(call const &c)
-{
-    auto const e = encoder_of<Target>(c);
-    if (!e) [[unlikely]]
-        return std::unexpected(e.error());
-    if (auto const ok = arguments_counted(c, 0); !ok) [[unlikely]]
-        return std::unexpected(ok.error());
-    return value_of((*e)->finish());
-}
-
-using string_encoder = cbor::encoder<std::string>;
-using chars_encoder = cbor::encoder<std::span<char>>;
 
 inline constexpr entry decode_functions[] = {
     {"cbor::decode()", decode_made},
     {"cbor::encoded_cbor_data_item()", encoded_cbor_data_item_found},
     {"cbor::encode()", encode_made},
-    {"cbor::cycles", cycles_named},
     {.name = "cbor::owning<cbor::item>.operator*()", .run = owning_item_star, .runnable = true},
     {.name = "cbor::item const *.operator*()", .run = item_pointer_star, .runnable = true},
     {.name = "cbor::item const *.get()", .run = item_get, .candidates = item_get_candidates, .runnable = true},
     {.name = "cbor::item.get()", .run = item_get, .candidates = item_get_candidates, .runnable = true},
-    {.name = "cbor::item.type", .run = item_type_of, .runnable = true},
+    {.name = "cbor::item.type()", .run = item_type_of, .runnable = true},
+    {.name = "cbor::item const *.type()", .run = item_type_of, .runnable = true},
+    {.name = "std::ranges::stride_view<std::ranges::adjacent_view<std::span<cbor::item const>, 2>>.size()", .run = view_size<item_pairs>, .runnable = true},
+    {.name = "std::ranges::stride_view<std::ranges::adjacent_view<std::span<cbor::item const>, 2>>.operator[]()", .run = pairs_index, .runnable = true},
+    {.name = "std::get()", .run = pair_get, .runnable = true},
     {.name = "cbor::item const *.additional_information", .run = item_additional_information, .runnable = true},
     {.name = "cbor::item.additional_information", .run = item_additional_information, .runnable = true},
     {.name = "std::span<cbor::item const>.size()", .run = view_size<std::span<cbor::item const>>, .runnable = true},
@@ -514,29 +378,6 @@ inline constexpr entry decode_functions[] = {
     {"cbor::simple_value::null", simple_value_named<cbor::simple_value::null>},
     {"cbor::simple_value::undefined", simple_value_named<cbor::simple_value::undefined>},
     {"cbor::simple_value{}", simple_value_made},
-    {"cbor::encoder{}", encoder_made},
-    {"cbor::encoder<std::string>.unsigned_integer()", encoder_unsigned_integer<std::string>, true},
-    {"cbor::encoder<std::string>.negative_integer()", encoder_negative_integer<std::string>, true},
-    {"cbor::encoder<std::string>.byte_string()", encoder_byte_string<std::string>, true},
-    {"cbor::encoder<std::string>.text_string()", encoder_text_string<std::string>, true},
-    {"cbor::encoder<std::string>.array()", encoder_head<std::string, &string_encoder::array>, true},
-    {"cbor::encoder<std::string>.map()", encoder_head<std::string, &string_encoder::map>, true},
-    {"cbor::encoder<std::string>.tag()", encoder_head<std::string, &string_encoder::tag>, true},
-    {"cbor::encoder<std::string>.simple_value()", encoder_simple_value<std::string>, true},
-    {"cbor::encoder<std::string>.floating_point()", encoder_floating_point<std::string>, true},
-    {"cbor::encoder<std::string>.typed_array()", encoder_typed_array<std::string>, true},
-    {"cbor::encoder<std::string>.finish()", encoder_finish<std::string>, true},
-    {"cbor::encoder<std::span<char>>.unsigned_integer()", encoder_unsigned_integer<std::span<char>>, true},
-    {"cbor::encoder<std::span<char>>.negative_integer()", encoder_negative_integer<std::span<char>>, true},
-    {"cbor::encoder<std::span<char>>.byte_string()", encoder_byte_string<std::span<char>>, true},
-    {"cbor::encoder<std::span<char>>.text_string()", encoder_text_string<std::span<char>>, true},
-    {"cbor::encoder<std::span<char>>.array()", encoder_head<std::span<char>, &chars_encoder::array>, true},
-    {"cbor::encoder<std::span<char>>.map()", encoder_head<std::span<char>, &chars_encoder::map>, true},
-    {"cbor::encoder<std::span<char>>.tag()", encoder_head<std::span<char>, &chars_encoder::tag>, true},
-    {"cbor::encoder<std::span<char>>.simple_value()", encoder_simple_value<std::span<char>>, true},
-    {"cbor::encoder<std::span<char>>.floating_point()", encoder_floating_point<std::span<char>>, true},
-    {"cbor::encoder<std::span<char>>.typed_array()", encoder_typed_array<std::span<char>>, true},
-    {"cbor::encoder<std::span<char>>.finish()", encoder_finish<std::span<char>>, true},
 };
 
 }

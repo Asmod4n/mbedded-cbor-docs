@@ -100,6 +100,33 @@ inline std::expected<std::int64_t, fault> integer_argument(call const &c, std::s
     return std::unexpected("the argument " + number_text(i + 1) + " is not an integer");
 }
 
+inline result edn_key_found(cbor::lazy const &self, edn_literal const &literal)
+{
+    auto const key = cbor::lazy::adopt(std::string(literal.encoded));
+    if (!key) [[unlikely]]
+        return value_of(std::expected<cbor::lazy, cbor::error>(std::unexpected(key.error())));
+    auto const t = key->type();
+    if (t == cbor::type::unsigned_integer || t == cbor::type::negative_integer) {
+        auto const n = key->get<std::int64_t>();
+        if (!n) [[unlikely]]
+            return value_of(std::expected<cbor::lazy, cbor::error>(std::unexpected(n.error())));
+        return value_of(self.at(*n));
+    }
+    if (t == cbor::type::text_string) {
+        auto const text = key->get<std::string_view>();
+        if (!text) [[unlikely]]
+            return value_of(std::expected<cbor::lazy, cbor::error>(std::unexpected(text.error())));
+        return value_of(self.at(**text));
+    }
+    auto const notation = cbor::diagnostic_notation(literal.encoded);
+    if (!notation) [[unlikely]]
+        return value_of(std::expected<cbor::lazy, cbor::error>(std::unexpected(notation.error())));
+    auto const query = cbor::path::compile<cbor::lazy>("$[" + *notation + "]");
+    if (!query) [[unlikely]]
+        return value_of(std::expected<cbor::lazy, cbor::error>(std::unexpected(query.error())));
+    return value_of(self.at_path(*query));
+}
+
 inline result lazy_at(call const &c)
 {
     auto const self = self_of<cbor::lazy>(c);
@@ -109,20 +136,12 @@ inline result lazy_at(call const &c)
         return std::unexpected(ok.error());
     if (auto const key = text_argument(c, 0))
         return value_of((*self)->at(*key));
-    if (auto const k = held_if<cbor::key>(c.arguments.front()))
-        return value_of((*self)->at(*k));
-    auto const index = unsigned_argument(c, 0);
-    if (!index) [[unlikely]]
-        return std::unexpected("at takes a text, a cbor::key or an index");
-    return value_of((*self)->at(static_cast<std::size_t>(*index)));
-}
-
-inline result key_made(call const &c)
-{
+    if (auto const *const literal = held_if<edn_literal>(c.arguments.front()))
+        return edn_key_found(**self, *literal);
     auto const n = integer_argument(c, 0);
-    if (!n || c.arguments.size() != 1) [[unlikely]]
-        return std::unexpected("cbor::key takes one integer");
-    return value_of(cbor::key{*n});
+    if (!n) [[unlikely]]
+        return std::unexpected("at takes a text or an integer");
+    return value_of((*self)->at(*n));
 }
 
 inline result lazy_get(call const &c)
@@ -211,14 +230,6 @@ result ref_star(call const &c)
     return view_of(*c.self, ***self);
 }
 
-inline result item_type(call const &c)
-{
-    auto const self = self_of<cbor::item const *>(c);
-    if (!self) [[unlikely]]
-        return std::unexpected(self.error());
-    return value_of((**self)->type);
-}
-
 inline result adopt(call const &c)
 {
     auto const bytes = argument_of<std::string>(c, 0, "a std::string");
@@ -255,8 +266,6 @@ inline result string_shared(call const &c)
 inline constexpr entry lazy_functions[] = {
     {"std::move()", moved},
     {"std::make_shared()", string_shared},
-    {"cbor::key{}", key_made},
-    {"cbor::key()", key_made},
     {"cbor::lazy::adopt()", adopt},
     {"cbor::lazy::view()", lazy_view},
     {.name = "cbor::lazy.at()", .run = lazy_at, .candidates = lazy_index_candidates<false>, .runnable = true},
@@ -268,13 +277,12 @@ inline constexpr entry lazy_functions[] = {
     {.name = "cbor::lazy.type()", .run = lazy_member<&cbor::lazy::type>, .runnable = true},
     {.name = "cbor::lazy.elements()", .run = lazy_member<&cbor::lazy::elements>, .runnable = true},
     {.name = "cbor::lazy.entries()", .run = lazy_member<&cbor::lazy::entries>, .runnable = true},
-    {.name = "cbor::lazy.clone()", .run = lazy_member<&cbor::lazy::clone>, .runnable = true},
+    {.name = "cbor::lazy.to_item()", .run = lazy_member<&cbor::lazy::to_item>, .runnable = true},
     {.name = "cbor::lazy_elements.size()", .run = view_size<cbor::lazy_elements>, .runnable = true},
     {.name = "cbor::lazy_entries.size()", .run = view_size<cbor::lazy_entries>, .runnable = true},
     {.name = "cbor::nodelist.size()", .run = view_size<cbor::nodelist>, .runnable = true},
     {.name = "cbor::nodelist.operator[]()", .run = nodelist_index, .candidates = indexes_candidates<cbor::nodelist>, .runnable = true},
     {.name = "cbor::owning<cbor::item>.operator->()", .run = owning_item_arrow, .runnable = true},
-    {.name = "cbor::item const *.type", .run = item_type, .runnable = true},
     {"cbor::ref<std::string_view>.operator*()", ref_star<std::string_view>},
     {"cbor::ref<std::span<std::byte const>>.operator*()", ref_star<std::span<std::byte const>>},
 };

@@ -1,36 +1,6 @@
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
-const head = (major, n) => {
-  if (n < 24) return [major << 5 | n];
-  if (n < 0x100) return [major << 5 | 24, n];
-  if (n < 0x10000) return [major << 5 | 25, n >> 8, n & 255];
-  if (n < 0x100000000) return [major << 5 | 26, n >>> 24, (n >>> 16) & 255, (n >>> 8) & 255, n & 255];
-  const b = new DataView(new ArrayBuffer(8));
-  b.setBigUint64(0, BigInt(n));
-  return [major << 5 | 27, ...new Uint8Array(b.buffer)];
-};
-
-export const encoded = v => {
-  if (v === null) return [0xf6];
-  if (v === true) return [0xf5];
-  if (v === false) return [0xf4];
-  if (typeof v === "number") {
-    if (Number.isSafeInteger(v)) return v >= 0 ? head(0, v) : head(1, -1 - v);
-    const d = new DataView(new ArrayBuffer(9));
-    d.setUint8(0, 0xfb);
-    d.setFloat64(1, v);
-    return [...new Uint8Array(d.buffer)];
-  }
-  if (typeof v === "string") {
-    const s = [...textEncoder.encode(v)];
-    return [...head(3, s.length), ...s];
-  }
-  if (Array.isArray(v)) return [...head(4, v.length), ...v.flatMap(encoded)];
-  const keys = Object.keys(v);
-  return [...head(5, keys.length), ...keys.flatMap(k => [...encoded(k), ...encoded(v[k])])];
-};
-
 export const hexOf = bytes => [...bytes].map(b => b.toString(16).padStart(2, "0")).join(" ");
 
 export const bytesOf = hex => {
@@ -79,6 +49,16 @@ export const instantiated = async source => {
     x.release(p);
     return out.split("\n").slice(0, -1);
   };
+  const diag2cbor = text => {
+    const t = textEncoder.encode(text), p = put(t);
+    const out = x.diag2cbor(p, t.length);
+    x.release(p);
+    const n = new DataView(memory.buffer).getUint32(out, true);
+    const bytes = new Uint8Array(memory.buffer, out + 4, n).slice();
+    x.release(out);
+    if (!n) throw new Error("the message is not EDN");
+    return bytes;
+  };
   const run = async (bytes, lines, group) => {
     try {
       return call("run", bytes, lines, group);
@@ -106,5 +86,5 @@ export const instantiated = async source => {
       return { head: lines.split("\n").at(-1), found: [], trapped: true };
     }
   };
-  return { run, completed };
+  return { run, completed, diag2cbor };
 };

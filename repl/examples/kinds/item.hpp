@@ -4,22 +4,12 @@
 
 #include <array>
 #include <functional>
+#include <ranges>
+#include <tuple>
 #include <utility>
 
 namespace site
 {
-
-template <class Target>
-struct encoder_over {
-    std::shared_ptr<void> target;
-    cbor::encoder<Target> encoder;
-
-    template <class Argument>
-    encoder_over(std::shared_ptr<void> t, Argument &&argument)
-        : target(std::move(t)), encoder(std::forward<Argument>(argument))
-    {
-    }
-};
 
 inline std::string bytes_text(std::span<std::byte const> const bytes)
 {
@@ -59,21 +49,41 @@ struct kind<std::span<cbor::item const>> {
     }
 };
 
+using item_pairs = std::ranges::stride_view<std::ranges::adjacent_view<std::span<cbor::item const>, 2>>;
+using item_pair = std::tuple<cbor::item const &, cbor::item const &>;
+
+template <>
+struct kind<item_pairs> {
+    static constexpr std::string_view name =
+        "std::ranges::stride_view<std::ranges::adjacent_view<std::span<cbor::item const>, 2>>";
+    static std::string text(item_pairs const &v)
+    {
+        auto const n = std::ranges::size(v);
+        std::string out = "stride_view of " + number_text(n) + (n == 1 ? " pair" : " pairs");
+        char const *separator = ": ";
+        for (auto const &[k, x] : v) {
+            out += separator + item_notation(k) + ": " + item_notation(x);
+            separator = ", ";
+        }
+        return out;
+    }
+};
+
+template <>
+struct kind<item_pair> {
+    static constexpr std::string_view name = "std::tuple<cbor::item const &, cbor::item const &>";
+    static std::string text(item_pair const &v)
+    {
+        return "tuple of " + item_notation(std::get<0>(v)) + ", " + item_notation(std::get<1>(v));
+    }
+};
+
 template <>
 struct kind<std::pair<std::uint64_t, cbor::item const *>> {
     static constexpr std::string_view name = "std::pair<std::uint64_t, cbor::item const *>";
     static std::string text(std::pair<std::uint64_t, cbor::item const *> const &v)
     {
         return "pair of " + number_text(v.first) + " and " + kind<cbor::item const *>::text(v.second);
-    }
-};
-
-template <>
-struct kind<cbor::cycles_t> {
-    static constexpr std::string_view name = "cbor::cycles_t";
-    static std::string text(cbor::cycles_t)
-    {
-        return "cbor::cycles";
     }
 };
 
@@ -93,24 +103,6 @@ struct kind<cbor::simple_value> {
             return "cbor::simple_value::undefined";
         }
         return "cbor::simple_value{" + number_text(std::to_underlying(v)) + "}";
-    }
-};
-
-template <>
-struct kind<encoder_over<std::string>> {
-    static constexpr std::string_view name = "cbor::encoder<std::string>";
-    static std::string text(encoder_over<std::string> const &)
-    {
-        return "encoder over a std::string";
-    }
-};
-
-template <>
-struct kind<encoder_over<std::span<char>>> {
-    static constexpr std::string_view name = "cbor::encoder<std::span<char>>";
-    static std::string text(encoder_over<std::span<char>> const &)
-    {
-        return "encoder over a std::span<char>";
     }
 };
 

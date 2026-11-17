@@ -49,7 +49,7 @@ def decl_lines($whole; $name; $w):
   ($whole | sub(" requires [^;{]*$"; "")) as $decl
   | if ($decl | length) <= $w then [$decl]
   else (($decl | index($name + "(")) // null) as $at
-    | if $at == null then ($decl | wrapped($w; 4))
+    | if $at == null then ($decl | wrapped($w; 4) | map(hard_broken($w)) | add)
       else ($decl[0:$at] | sub(" +$"; "")) as $prefix
         | $decl[$at:] as $rest
         | ($name | length) as $open
@@ -57,7 +57,7 @@ def decl_lines($whole; $name; $w):
         | ($open + $close_relative) as $close
         | $rest[($open + 1):$close] as $params
         | ($rest[($close + 1):] | sub("^ +"; "")) as $tail
-        | (if $prefix == "" then [] elif ($prefix | length) > $w then ($prefix | wrapped($w; 4)) else [$prefix] end)
+        | (if $prefix == "" then [] elif ($prefix | length) > $w then ($prefix | wrapped($w; 4) | map(hard_broken($w)) | add) else [$prefix] end)
           + (if ($rest | length) <= $w then [$rest]
              else ($tail | length) as $tail_length
                | (if $tail_length > 0 and ($tail_length + 20) > $w then "" else (if $tail == "" then "" else " " + $tail end) end) as $inline_tail
@@ -71,7 +71,7 @@ def sig_text_lines($line; $name; $reduce):
   | ($p.number // "") as $number
   | ($p.decl | without_requires | template_split) as $t
   | (man_width - ($number | length) - $reduce) as $w
-  | ((if $t.template == "" then [] elif ($t.template | length) > $w then ($t.template | wrapped($w; 10)) else [$t.template] end)
+  | ((if $t.template == "" then [] elif ($t.template | length) > $w then ($t.template | wrapped($w; 10) | map(hard_broken($w)) | add) else [$t.template] end)
      + decl_lines($t.rest; $name; $w))
   | . as $all | [ range(0; $all | length) as $i | (if $i == 0 then $number else spaces($number | length) end) + $all[$i] ];
 def throws_of($e): [ ($e.body | split("\n\n"))[] | select(startswith("Throws:"))
