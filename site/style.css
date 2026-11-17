@@ -71,13 +71,23 @@ nav.side li a { display: block; overflow-wrap: anywhere; padding: 0.1rem 0.4rem;
 nav.side li a:hover, nav.side li a.here { background: var(--accent-soft); color: var(--accent); text-decoration: none; }
 h1 { font-family: var(--mono); }
 .entries pre { margin: 0.25rem 0; }
-.example { position: relative; margin: 0.4rem 0 0.6rem; }
-.example pre { margin: 0; padding-right: 5.5rem; outline-offset: 2px; }
-.example pre:focus-visible { outline: 2px solid var(--accent); }
+.example { margin: 0.4rem 0 0.6rem; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; background: var(--panel); }
+.example .bar { display: flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.4rem 0.3rem 0.8rem; border-bottom: 1px solid var(--rule); background: var(--bg); }
+.example .lang { flex: 1; min-width: 0; font: 0.74rem var(--sans); color: var(--muted); }
+.example pre { margin: 0; border-radius: 0; outline: 0; cursor: text; }
+.example:focus-within { border-color: var(--accent); }
+.example .caret { padding: 0 0.8rem 0.5rem; cursor: text; line-height: 1; }
+.example .caret::before { content: ""; display: inline-block; width: 0.55em; height: 1.05em; background: var(--accent); animation: caret-blink 1.06s steps(1) infinite; }
+.example:focus-within .caret { visibility: hidden; }
+@keyframes caret-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .example .caret::before { animation: none; } }
+.example .status { margin: 0; padding: 0.3rem 0.8rem; border-top: 1px solid var(--rule); font: 0.78rem var(--sans); color: var(--ok); }
+.example .status.err { color: var(--err); }
+button.reset { font: 600 0.74rem var(--sans); color: var(--fg); background: transparent; border: 1px solid var(--rule); border-radius: 6px; padding: 0.22rem 0.55rem; cursor: pointer; }
+button.reset[hidden] { display: none; }
 .example .r.err { color: var(--err); font-style: normal; }
 button.run { font: 600 0.74rem var(--sans); color: #fff; background: var(--accent); border: 0; border-radius: 6px; padding: 0.25rem 0.6rem; cursor: pointer; }
 button.run[hidden] { display: none; }
-.example button.run { position: absolute; top: 0.45rem; right: 0.5rem; }
 button.run:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .play { border: 1px solid var(--rule); border-radius: 6px; margin: 1rem 0; overflow: hidden; }
 .play .bar { display: flex; align-items: center; gap: 0.6rem; background: var(--panel); padding: 0.3rem 0.6rem; border-bottom: 1px solid var(--rule); font-size: 0.8rem; color: var(--muted); }

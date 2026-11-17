@@ -64,9 +64,12 @@ const dataLength = lines => {
 };
 const played = async pre => {
   const lines = codeLinesOf(pre);
+  const expected = new Map();
   const old = new Map([...pre.querySelectorAll(".l")].map(l => {
     const copy = l.cloneNode(true);
-    copy.querySelector(".r")?.remove();
+    const r = copy.querySelector(".r");
+    r?.remove();
+    if (r) expected.set(copy.textContent.trimEnd().replace(/;\s*$/, ""), r.textContent.replace(/^\/\/ /, ""));
     return [copy.textContent.trimEnd(), copy.innerHTML.trimEnd()];
   }));
   let head, calls, results;
@@ -86,13 +89,35 @@ const played = async pre => {
   pre.innerHTML = head.map(h => line(h) + "</span>").join("\n") + (calls.length ? "\n" : "") +
     calls.map((c, i) => line(c) + " ".repeat(widest - c.length) + resultGap +
       '<span class="r comment' + (/^(fault|unexpected)/.test(results[i] ?? "") ? " err" : "") + '">// ' + escaped(results[i] ?? "") + "</span></span>").join("\n");
+  const key = c => c.replace(/;\s*$/, "");
+  const bad = calls.filter((c, i) => /^fault/.test(results[i] ?? "") || (expected.has(key(c)) && expected.get(key(c)) !== results[i])).length;
+  return { calls: calls.length, bad };
 };
 
 document.querySelectorAll(".example[data-play]").forEach(box => {
-  const pre = box.querySelector("pre"), button = box.querySelector("button.run");
+  const pre = box.querySelector("pre"), button = box.querySelector("button.run"), reset = box.querySelector("button.reset");
+  const status = box.querySelector(".status"), caret = box.querySelector(".caret"), original = pre.innerHTML;
+  const ran = async () => {
+    const { calls, bad } = await played(pre);
+    status.textContent = "Ran in your browser: " + calls + (calls === 1 ? " call" : " calls") +
+      (bad ? ", " + bad + " not as in the comments" : ", all as in the comments") + ".";
+    status.classList.toggle("err", bad > 0);
+    status.hidden = false;
+  };
   button.hidden = false;
-  button.addEventListener("click", () => played(pre));
-  pre.addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); played(pre); } });
+  reset.hidden = false;
+  button.addEventListener("click", ran);
+  reset.addEventListener("click", () => { pre.innerHTML = original; status.hidden = true; });
+  caret?.addEventListener("click", () => {
+    pre.focus();
+    const range = document.createRange();
+    range.selectNodeContents(pre);
+    range.collapse(false);
+    const selection = getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  });
+  pre.addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); ran(); } });
 });
 
 const consoleBox = document.querySelector(".play[data-console]");

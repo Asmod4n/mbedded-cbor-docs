@@ -5,8 +5,10 @@
 {{#has_body}}<div class="text">{{{body_html}}}</div>
 {{/has_body}}{{#has_example}}<pre class="code">{{{example_html}}}</pre>
 {{/has_example}}{{#has_play}}<div class="example" data-play>
-<button class="run" type="button" hidden>&#9654; Run</button>
+<div class="bar"><span class="lang">C++ &middot; edit and run in your browser</span><button class="reset" type="button" hidden>Reset</button><button class="run" type="button" hidden>&#9654; Run</button></div>
 <pre class="code editable" contenteditable="true" spellcheck="false" aria-label="Example, editable">{{{example_html}}}</pre>
+<div class="caret" aria-hidden="true"></div>
+<p class="status" aria-live="polite" hidden></p>
 </div>
 {{/has_play}}</section>
 {{/entries}}</div>
