@@ -49,17 +49,17 @@ struct kind<std::span<cbor::item const>> {
     }
 };
 
-using item_pairs = std::ranges::stride_view<std::ranges::adjacent_view<std::span<cbor::item const>, 2>>;
-using item_pair = std::tuple<cbor::item const &, cbor::item const &>;
+using item_pairs = cbor::pairs;
+using item_pair = std::pair<cbor::item const &, cbor::item const &>;
 
 template <>
 struct kind<item_pairs> {
     static constexpr std::string_view name =
-        "std::ranges::stride_view<std::ranges::adjacent_view<std::span<cbor::item const>, 2>>";
+        "cbor::pairs";
     static std::string text(item_pairs const &v)
     {
         auto const n = std::ranges::size(v);
-        std::string out = "stride_view of " + number_text(n) + (n == 1 ? " pair" : " pairs");
+        std::string out = number_text(n) + (n == 1 ? " pair" : " pairs");
         char const *separator = ": ";
         for (auto const &[k, x] : v) {
             out += separator + item_notation(k) + ": " + item_notation(x);
@@ -71,7 +71,7 @@ struct kind<item_pairs> {
 
 template <>
 struct kind<item_pair> {
-    static constexpr std::string_view name = "std::tuple<cbor::item const &, cbor::item const &>";
+    static constexpr std::string_view name = "std::pair<cbor::item const &, cbor::item const &>";
     static std::string text(item_pair const &v)
     {
         return "tuple of " + item_notation(std::get<0>(v)) + ", " + item_notation(std::get<1>(v));

@@ -224,7 +224,7 @@ void indexes_candidates(value const &self, std::string_view const partial, candi
 
 constexpr std::string_view item_read_types[] = {
     "std::span<cbor::item const>",
-    "std::ranges::stride_view<std::ranges::adjacent_view<std::span<cbor::item const>, 2>>",
+    "cbor::pairs",
     "std::pair<std::uint64_t, cbor::item const *>",
 };
 

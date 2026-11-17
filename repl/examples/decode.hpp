@@ -115,7 +115,7 @@ inline result pairs_index(call const &c)
     if (!i) [[unlikely]]
         return std::unexpected(i.error());
     if (*i >= std::ranges::size(**self)) [[unlikely]]
-        return std::unexpected("the index is outside the stride_view");
+        return std::unexpected("the index is outside the pairs");
     return view_of(*c.self, item_pair((**self)[static_cast<std::ptrdiff_t>(*i)]));
 }
 
@@ -353,8 +353,8 @@ inline constexpr entry decode_functions[] = {
     {.name = "cbor::item.get()", .run = item_get, .candidates = item_get_candidates, .runnable = true},
     {.name = "cbor::item.type()", .run = item_type_of, .runnable = true},
     {.name = "cbor::item const *.type()", .run = item_type_of, .runnable = true},
-    {.name = "std::ranges::stride_view<std::ranges::adjacent_view<std::span<cbor::item const>, 2>>.size()", .run = view_size<item_pairs>, .runnable = true},
-    {.name = "std::ranges::stride_view<std::ranges::adjacent_view<std::span<cbor::item const>, 2>>.operator[]()", .run = pairs_index, .runnable = true},
+    {.name = "cbor::pairs.size()", .run = view_size<item_pairs>, .runnable = true},
+    {.name = "cbor::pairs.operator[]()", .run = pairs_index, .runnable = true},
     {.name = "std::get()", .run = pair_get, .runnable = true},
     {.name = "cbor::item const *.additional_information", .run = item_additional_information, .runnable = true},
     {.name = "cbor::item.additional_information", .run = item_additional_information, .runnable = true},

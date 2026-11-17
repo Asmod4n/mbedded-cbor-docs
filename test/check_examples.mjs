@@ -84,7 +84,7 @@ const cases = [
     "doc->at_path<\"$.tags[*]\", cbor::nodelist>()"]],
   [map, "doc->at(doc->at(\"n", ["doc->at(doc->at(\"name\")"]],
   [map, "std::move(doc->at(\"n", ["std::move(doc->at(\"name\")", "std::move(doc->at(\"name\"))"]],
-  [map, "doc->to_item()", ["doc->to_item().value()->get<std::ranges::stride_view<std::ranges::adjacent_view<std::span<cbor::item const>, 2>>>()", "doc->to_item().value()->type()",
+  [map, "doc->to_item()", ["doc->to_item().value()->get<cbor::pairs>()", "doc->to_item().value()->type()",
     "doc->to_item().value()->additional_information"]],
   [map, "doc->to_item()->", []],
   [map, "doc->nothing", []],
