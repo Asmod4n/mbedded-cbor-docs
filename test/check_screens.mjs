@@ -22,18 +22,21 @@ const server = createServer((request, response) => {
 }).listen(0, "127.0.0.1");
 await new Promise(done => server.once("listening", done));
 const origin = `http://127.0.0.1:${server.address().port}`;
-const debugPort = 20000 + Math.floor(Math.random() * 20000);
-const browser = spawn(chromium, ["--headless", "--no-sandbox", "--disable-gpu", `--remote-debugging-port=${debugPort}`,
+const browser = spawn(chromium, ["--headless", "--no-sandbox", "--disable-gpu", "--remote-debugging-port=0",
   `--user-data-dir=${mkdtempSync(`${tmpdir()}/screens-`)}`, "about:blank"], { stdio: ["ignore", "ignore", "pipe"] });
 const stop = code => { browser.kill(); server.close(); process.exit(code); };
+const debugOrigin = await new Promise((done, fail) => {
+  let said = "";
+  browser.stderr.on("data", chunk => {
+    said += chunk;
+    const found = said.match(/DevTools listening on ws:\/\/([^/\s]+)\//);
+    if (found) done(`http://${found[1]}`);
+  });
+  browser.once("exit", code => fail(new Error(`the browser ended with ${code} before it listened: ${said}`)));
+});
 const pageSocket = async () => {
-  for (let tries = 0; tries < 100; tries++) {
-    try {
-      const target = await (await fetch(`http://127.0.0.1:${debugPort}/json/new?about:blank`, { method: "PUT" })).json();
-      return new WebSocket(target.webSocketDebuggerUrl);
-    } catch { await new Promise(done => setTimeout(done, 100)); }
-  }
-  throw new Error("the browser does not answer");
+  const target = await (await fetch(`${debugOrigin}/json/new?about:blank`, { method: "PUT" })).json();
+  return new WebSocket(target.webSocketDebuggerUrl);
 };
 const socket = await pageSocket();
 await new Promise(done => socket.addEventListener("open", done));
