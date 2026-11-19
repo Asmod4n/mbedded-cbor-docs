@@ -2,6 +2,7 @@
 #pragma once
 
 #include "decode.hpp"
+#include "tools.hpp"
 #include "lazy.hpp"
 
 #include <doc_types.hpp>
@@ -167,6 +168,33 @@ inline result encode_called(call const &c)
 }
 
 template <class T>
+result value_edn(call const &c)
+{
+    auto const v = member_converted<T>(c.arguments.front(), 0);
+    if (!v) [[unlikely]]
+        return std::unexpected(v.error());
+    return value_of(cbor::to_edn(*v));
+}
+
+inline result edn_called(call const &c)
+{
+    if (c.template_arguments.empty())
+        return edn_made(c);
+    if (auto const ok = arguments_counted(c, 1); !ok) [[unlikely]]
+        return std::unexpected(ok.error());
+    std::string_view const t = c.template_arguments.front();
+    if (t == "person")
+        return value_edn<reference_structs::person>(c);
+    if (t == "reading")
+        return value_edn<reference_structs::reading>(c);
+    if (t == "senml")
+        return value_edn<reference_structs::senml>(c);
+    if (t == "std::set<std::uint8_t>")
+        return value_edn<std::set<std::uint8_t>>(c);
+    return std::unexpected(std::string(t) + " is not a type known here");
+}
+
+template <class T>
 result structs_decode(call const &c)
 {
     if (auto const ok = arguments_counted(c, 1); !ok) [[unlikely]]
@@ -237,6 +265,7 @@ inline constexpr entry structs_functions[] = {
     {"device{}", aggregate_made<reference_structs::device, std::string, std::uint8_t>},
     {"cbor::has_describe_members", has_describe_members_read},
     {"cbor::encode()", encode_called},
+    {"cbor::to_edn()", edn_called},
     {"cbor::structs<person>::encode()", structs_encode<reference_structs::person>},
     {"cbor::structs<header>::encode()", structs_encode<reference_structs::header>},
     {"cbor::structs<senml>::encode()", structs_encode<reference_structs::senml>},

@@ -355,7 +355,6 @@ inline constexpr entry decode_functions[] = {
     {"cbor::decode()", decode_made},
     {"cbor::decode_cycles()", decode_cycles_made},
     {"cbor::encoded_cbor_data_item()", encoded_cbor_data_item_found},
-    {"cbor::encode()", encode_made},
     {.name = "cbor::owning<cbor::item>.operator*()", .run = owning_item_star, .runnable = true},
     {.name = "cbor::item const *.operator*()", .run = item_pointer_star, .runnable = true},
     {.name = "cbor::item const *.get()", .run = item_get, .candidates = item_get_candidates, .runnable = true},

@@ -135,7 +135,6 @@ inline result reader_empty(call const &c)
 
 inline constexpr entry tools_functions[] = {
     {"cbor::diagnostic_notation()", notation_made},
-    {"cbor::to_edn()", edn_made},
     {"cbor::item_size()", size_read},
     {"std::string.substr()", string_substr},
     {"cbor::sequence()", sequence_made},

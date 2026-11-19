@@ -8,7 +8,11 @@
   "groups": [
     {
       "name": "decode",
-      "title": "a decoded tree of CBOR and the encoder"
+      "title": "a decoded tree of CBOR"
+    },
+    {
+      "name": "encode",
+      "title": "any C++ value into CBOR"
     },
     {
       "name": "errors",

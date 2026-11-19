@@ -1,0 +1,7 @@
++ <h1>encode</h1>
++ any C++ value into CBOR
++ <h2>cbor::encode</h2>
+- CBOR_ALWAYS_INLINE
+- CBOR_LIFETIMEBOUND
+- <h2>cbor::detail
+- <h2></h2>

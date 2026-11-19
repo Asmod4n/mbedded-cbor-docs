@@ -22,6 +22,7 @@ cbor::structs.3
 cbor::tag.3
 cbor::typed_array_view.3
 mbedded-cbor-decode.3
+mbedded-cbor-encode.3
 mbedded-cbor-errors.3
 mbedded-cbor-lazy.3
 mbedded-cbor-path.3
