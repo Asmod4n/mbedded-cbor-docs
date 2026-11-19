@@ -3,7 +3,8 @@
     "title": "mbedded-cbor",
     "brief": "A header-only C++ library for CBOR (RFC 8949).",
     "example": "// bytes: a std::string with {\"user\": {\"id\": 42, \"name\": \"ann\"}}\nauto const id = cbor::at_path<\"$.user.id\", int>(bytes);     // 42\nauto const age = cbor::at_path<\"$.user.age\", int>(bytes);   // cbor::error::key_not_found\n\nauto const doc = cbor::lazy::adopt(std::move(bytes));\nauto const name = doc->at_path<\"$.user.name\", std::string_view>();  // \"ann\", a view into the message",
-    "install": "cmake -S mbedded-cbor -B build -DBUILD_TESTING=OFF\ncmake --install build --prefix /usr/local\n\nfind_package(mbedded-cbor 0.9 CONFIG REQUIRED)\ntarget_link_libraries(app PRIVATE mbedded-cbor::mbedded-cbor)"
+    "install": "cmake -S mbedded-cbor -B build -DBUILD_TESTING=OFF\ncmake --install build --prefix /usr/local\n\nfind_package(mbedded-cbor 0.9 CONFIG REQUIRED)\ntarget_link_libraries(app PRIVATE mbedded-cbor::mbedded-cbor)",
+    "compilers": "Builds with g++ 15 or later, clang 21 or later, AppleClang of Xcode 26 and clang-cl of Visual Studio, in C++23 or C++26. cl.exe (MSVC) is not supported: it cannot evaluate the compile-time code of cbor::schema, cbor::structs and cbor::at_path."
   },
   "groups": [
     {
