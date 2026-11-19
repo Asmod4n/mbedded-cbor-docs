@@ -1,6 +1,7 @@
 // Gives the calls of the console on cbor::structs.
 #pragma once
 
+#include "decode.hpp"
 #include "lazy.hpp"
 
 #include <doc_types.hpp>
@@ -129,6 +130,43 @@ result structs_encode(call const &c)
 }
 
 template <class T>
+result value_encoded(call const &c)
+{
+    auto const v = member_converted<T>(c.arguments.front(), 0);
+    if (!v) [[unlikely]]
+        return std::unexpected(v.error());
+    return value_of(cbor::encode(*v));
+}
+
+inline result encode_called(call const &c)
+{
+    if (c.arguments.size() == 2)
+        return encode_made(c);
+    if (auto const ok = arguments_counted(c, 1); !ok) [[unlikely]]
+        return std::unexpected(ok.error());
+    if (c.template_arguments.size() != 1) [[unlikely]]
+        return std::unexpected("cbor::encode of a value takes its type: cbor::encode<person>(person{...})");
+    std::string_view const t = c.template_arguments.front();
+    if (t == "person")
+        return value_encoded<reference_structs::person>(c);
+    if (t == "header")
+        return value_encoded<reference_structs::header>(c);
+    if (t == "senml")
+        return value_encoded<reference_structs::senml>(c);
+    if (t == "account")
+        return value_encoded<reference_structs::account>(c);
+    if (t == "reading")
+        return value_encoded<reference_structs::reading>(c);
+    if (t == "trailer")
+        return value_encoded<reference_structs::trailer>(c);
+    if (t == "device")
+        return value_encoded<reference_structs::device>(c);
+    if (t == "std::set<std::uint8_t>")
+        return value_encoded<std::set<std::uint8_t>>(c);
+    return std::unexpected(std::string(t) + " is not a type known here");
+}
+
+template <class T>
 result structs_decode(call const &c)
 {
     if (auto const ok = arguments_counted(c, 1); !ok) [[unlikely]]
@@ -198,6 +236,7 @@ inline constexpr entry structs_functions[] = {
     {"trailer{}", aggregate_made<reference_structs::trailer, std::uint8_t>},
     {"device{}", aggregate_made<reference_structs::device, std::string, std::uint8_t>},
     {"cbor::has_describe_members", has_describe_members_read},
+    {"cbor::encode()", encode_called},
     {"cbor::structs<person>::encode()", structs_encode<reference_structs::person>},
     {"cbor::structs<header>::encode()", structs_encode<reference_structs::header>},
     {"cbor::structs<senml>::encode()", structs_encode<reference_structs::senml>},

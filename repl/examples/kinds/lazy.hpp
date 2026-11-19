@@ -8,9 +8,10 @@ namespace site
 constexpr std::string_view type_names[] = {
     "unsigned_integer", "negative_integer", "byte_string",  "text_string",     "array",           "map",
     "tag",              "false_value",      "true_value",   "null",            "undefined",       "simple_value",
-    "half_float",       "single_float",     "double_float", "unsigned_bignum", "negative_bignum", "typed_array"};
+    "half_float",       "single_float",     "double_float", "unsigned_bignum", "negative_bignum", "typed_array",
+    "shared_reference"};
 
-static_assert(std::size(type_names) == std::to_underlying(cbor::type::typed_array) + 1);
+static_assert(std::size(type_names) == std::to_underlying(cbor::type::shared_reference) + 1);
 
 inline std::string notation_of(std::string_view const encoded)
 {

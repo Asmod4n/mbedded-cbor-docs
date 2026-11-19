@@ -167,6 +167,14 @@ inline result decode_made(call const &c)
     return value_of(cbor::decode(*encoded));
 }
 
+inline result decode_cycles_made(call const &c)
+{
+    auto const encoded = text_argument(c, 0);
+    if (!encoded || c.arguments.size() != 1) [[unlikely]]
+        return std::unexpected("cbor::decode_cycles takes the bytes of one item");
+    return value_of(cbor::decode_cycles(*encoded));
+}
+
 inline result encoded_cbor_data_item_found(call const &c)
 {
     if (auto const ok = arguments_counted(c, 2); !ok) [[unlikely]]
@@ -345,6 +353,7 @@ result unsigned_typed(call const &c, F const f)
 
 inline constexpr entry decode_functions[] = {
     {"cbor::decode()", decode_made},
+    {"cbor::decode_cycles()", decode_cycles_made},
     {"cbor::encoded_cbor_data_item()", encoded_cbor_data_item_found},
     {"cbor::encode()", encode_made},
     {.name = "cbor::owning<cbor::item>.operator*()", .run = owning_item_star, .runnable = true},

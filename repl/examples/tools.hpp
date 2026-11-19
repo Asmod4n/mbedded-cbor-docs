@@ -4,6 +4,8 @@
 
 #include "lazy.hpp"
 
+#include <cbor/diagnostic_notation.hpp>
+
 namespace site
 {
 
@@ -13,6 +15,16 @@ inline result notation_made(call const &c)
     if (!bytes || c.arguments.size() != 1) [[unlikely]]
         return std::unexpected("cbor::diagnostic_notation takes the bytes of one item");
     return value_of(cbor::diagnostic_notation(*bytes));
+}
+
+inline result edn_made(call const &c)
+{
+    if (auto const ok = arguments_counted(c, 1); !ok) [[unlikely]]
+        return std::unexpected(ok.error());
+    auto const root = argument_of<cbor::item>(c, 0, "a cbor::item");
+    if (!root) [[unlikely]]
+        return std::unexpected(root.error());
+    return value_of(cbor::to_edn(**root));
 }
 
 inline result size_read(call const &c)
@@ -123,6 +135,7 @@ inline result reader_empty(call const &c)
 
 inline constexpr entry tools_functions[] = {
     {"cbor::diagnostic_notation()", notation_made},
+    {"cbor::to_edn()", edn_made},
     {"cbor::item_size()", size_read},
     {"std::string.substr()", string_substr},
     {"cbor::sequence()", sequence_made},
