@@ -7,7 +7,7 @@ include(GNUInstallDirs)
 
 FetchContent_Declare(mbedded_cbor
   GIT_REPOSITORY https://github.com/Asmod4n/mbedded-cbor.git
-  GIT_TAG main
+  GIT_TAG claude/item-16-byte
   SOURCE_SUBDIR no-cmake-project)
 FetchContent_Declare(mustache
   GIT_REPOSITORY https://github.com/Asmod4n/mbedded-mustache.git
