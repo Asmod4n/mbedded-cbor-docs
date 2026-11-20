@@ -19,29 +19,20 @@ inline std::string bytes_text(std::span<std::byte const> const bytes)
 template <>
 struct kind<cbor::item> {
     static constexpr std::string_view name = "cbor::item";
-    static std::string text(cbor::item const &v)
+    static std::string text(cbor::item const v)
     {
         return "item of " + item_notation(v);
     }
 };
 
 template <>
-struct kind<std::reference_wrapper<cbor::item const>> {
-    static constexpr std::string_view name = "std::reference_wrapper<cbor::item const>";
-    static std::string text(std::reference_wrapper<cbor::item const> const v)
+struct kind<cbor::array_range> {
+    static constexpr std::string_view name = "cbor::array_range";
+    static std::string text(cbor::array_range const v)
     {
-        return "reference to item of " + item_notation(v.get());
-    }
-};
-
-template <>
-struct kind<std::span<cbor::item const>> {
-    static constexpr std::string_view name = "std::span<cbor::item const>";
-    static std::string text(std::span<cbor::item const> const v)
-    {
-        std::string out = "span of " + number_text(v.size()) + (v.size() == 1 ? " item" : " items");
+        std::string out = number_text(v.size()) + (v.size() == 1 ? " element" : " elements");
         char const *separator = ": ";
-        for (cbor::item const &node : v) {
+        for (cbor::item const node : v) {
             out += separator + item_notation(node);
             separator = ", ";
         }
@@ -49,19 +40,16 @@ struct kind<std::span<cbor::item const>> {
     }
 };
 
-using item_pairs = cbor::pairs;
-using item_pair = std::pair<cbor::item const &, cbor::item const &>;
+using item_entry = std::pair<cbor::item, cbor::item>;
 
 template <>
-struct kind<item_pairs> {
-    static constexpr std::string_view name =
-        "cbor::pairs";
-    static std::string text(item_pairs const &v)
+struct kind<cbor::map_range> {
+    static constexpr std::string_view name = "cbor::map_range";
+    static std::string text(cbor::map_range const v)
     {
-        auto const n = std::ranges::size(v);
-        std::string out = number_text(n) + (n == 1 ? " pair" : " pairs");
+        std::string out = number_text(v.size()) + (v.size() == 1 ? " entry" : " entries");
         char const *separator = ": ";
-        for (auto const &[k, x] : v) {
+        for (auto const [k, x] : v) {
             out += separator + item_notation(k) + ": " + item_notation(x);
             separator = ", ";
         }
@@ -70,20 +58,20 @@ struct kind<item_pairs> {
 };
 
 template <>
-struct kind<item_pair> {
-    static constexpr std::string_view name = "std::pair<cbor::item const &, cbor::item const &>";
-    static std::string text(item_pair const &v)
+struct kind<item_entry> {
+    static constexpr std::string_view name = "std::pair<cbor::item, cbor::item>";
+    static std::string text(item_entry const &v)
     {
-        return "tuple of " + item_notation(std::get<0>(v)) + ", " + item_notation(std::get<1>(v));
+        return "pair of " + item_notation(v.first) + " and " + item_notation(v.second);
     }
 };
 
 template <>
-struct kind<std::pair<std::uint64_t, cbor::item const *>> {
-    static constexpr std::string_view name = "std::pair<std::uint64_t, cbor::item const *>";
-    static std::string text(std::pair<std::uint64_t, cbor::item const *> const &v)
+struct kind<std::pair<std::uint64_t, cbor::item>> {
+    static constexpr std::string_view name = "std::pair<std::uint64_t, cbor::item>";
+    static std::string text(std::pair<std::uint64_t, cbor::item> const &v)
     {
-        return "pair of " + number_text(v.first) + " and " + kind<cbor::item const *>::text(v.second);
+        return "pair of " + number_text(v.first) + " and " + kind<cbor::item>::text(v.second);
     }
 };
 

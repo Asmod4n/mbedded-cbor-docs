@@ -19,7 +19,7 @@ inline std::string notation_of(std::string_view const encoded)
     return text ? *text : kind<cbor::error>::text(text.error());
 }
 
-inline std::string item_notation(cbor::item const &node)
+inline std::string item_notation(cbor::item const node)
 {
     std::string encoded;
     auto const written = cbor::encode(encoded, node);

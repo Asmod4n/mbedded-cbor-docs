@@ -84,8 +84,8 @@ const cases = [
     "doc->at_path<\"$.tags[*]\", cbor::nodelist>()"]],
   [map, "doc->at(doc->at(\"n", ["doc->at(doc->at(\"name\")"]],
   [map, "std::move(doc->at(\"n", ["std::move(doc->at(\"name\")", "std::move(doc->at(\"name\"))"]],
-  [map, "doc->to_item()", ["doc->to_item().value()->get<cbor::pairs>()", "doc->to_item().value()->type()",
-    "doc->to_item().value()->additional_information"]],
+  [map, "doc->to_item()", ["doc->to_item().value()->get<cbor::map_range>()", "doc->to_item().value()->type()",
+    "doc->to_item().value()->additional_information()"]],
   [map, "doc->to_item()->", []],
   [map, "doc->nothing", []],
   // A text gives only a std::string_view; it has no index and no key.
