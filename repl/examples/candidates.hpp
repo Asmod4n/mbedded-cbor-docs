@@ -223,8 +223,6 @@ void indexes_candidates(value const &self, std::string_view const partial, candi
 }
 
 constexpr std::string_view item_read_types[] = {
-    "cbor::array_range",
-    "cbor::map_range",
     "std::pair<std::uint64_t, cbor::item>",
 };
 

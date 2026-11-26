@@ -26,6 +26,11 @@ struct value {
     std::shared_ptr<void> held;
     std::string (*text)(void const *) = nullptr;
     bool expected = false;
+    bool temporary = false;
+    bool star_on_temporary = true;
+    bool arrow_on_temporary = true;
+    bool value_on_temporary = true;
+    bool error_on_temporary = true;
 };
 
 using fault = std::string;
@@ -55,6 +60,24 @@ value value_of(std::expected<T, cbor::error> v)
 {
     value out = v ? value_of(std::move(*v)) : value_of(v.error());
     out.expected = true;
+    return out;
+}
+
+template <class T>
+void temporary_readers_set(value &out)
+{
+    out.star_on_temporary = requires { *std::declval<cbor::result<T>>(); };
+    out.arrow_on_temporary = requires { std::declval<cbor::result<T>>().operator->(); };
+    out.value_on_temporary = requires { std::declval<cbor::result<T>>().value(); };
+    out.error_on_temporary = requires { std::declval<cbor::result<T>>().error(); };
+}
+
+template <class T>
+value value_of(cbor::result<T> const &v)
+{
+    value out = v ? value_of(T(*v)) : value_of(v.error());
+    out.expected = true;
+    temporary_readers_set<T>(out);
     return out;
 }
 

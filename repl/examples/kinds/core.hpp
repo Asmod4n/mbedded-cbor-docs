@@ -75,6 +75,15 @@ value expected_view_of(value const &owner, std::expected<T, cbor::error> v)
 }
 
 template <class T>
+value expected_view_of(value const &owner, cbor::result<T> const &v)
+{
+    value out = v ? view_of(owner, T(*v)) : value_of(v.error());
+    out.expected = true;
+    temporary_readers_set<T>(out);
+    return out;
+}
+
+template <class T>
 struct number_kind {
     static std::string text(T const v)
     {
@@ -181,11 +190,16 @@ inline bool printable(std::string_view const text)
     return std::ranges::all_of(text, [](char const c) { return c >= ' ' && c <= '~'; });
 }
 
+inline std::string byte_count_text(std::size_t const count)
+{
+    return number_text(count) + (count == 1 ? " byte: " : " bytes: ");
+}
+
 inline std::string string_text(std::string_view const text)
 {
     if (printable(text))
         return std::format("{:?}", text);
-    return number_text(text.size()) + " bytes: " + hex_text(std::span(text));
+    return byte_count_text(text.size()) + hex_text(std::span(text));
 }
 
 template <>
@@ -211,7 +225,7 @@ struct kind<std::span<char const>> {
     static constexpr std::string_view name = "std::span<char const>";
     static std::string text(std::span<char const> const v)
     {
-        return number_text(v.size()) + " bytes: " + hex_text(v);
+        return byte_count_text(v.size()) + hex_text(v);
     }
 };
 

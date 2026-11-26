@@ -5,7 +5,7 @@
 namespace site
 {
 
-inline std::string sequence_item_text(std::expected<std::string_view, cbor::error> const &item)
+inline std::string sequence_item_text(cbor::result<std::string_view> const &item)
 {
     return item ? notation_of(*item) : kind<cbor::error>::text(item.error());
 }

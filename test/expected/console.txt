@@ -3,7 +3,8 @@
 + <label for="co-m">Message</label>
 + data-complete
 + data-load
-+ doc-&gt;at(<span class="literal">"user"</span>)-&gt;at(<span class="literal">"name"</span>)-&gt;get&lt;std::string_view&gt;()
++ doc-&gt;at_path&lt;<span class="literal">"$.user.name"</span>, std::string_view&gt;()
+- doc-&gt;at(<span class="literal">"user"</span>)-&gt;at(
 + <span class="ok">ref to &quot;ann&quot;</span>
 + <span class="err">unexpected cbor::error::incorrect_type</span>
 + <body data-group="console">

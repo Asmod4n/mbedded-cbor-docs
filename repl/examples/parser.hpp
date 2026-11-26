@@ -285,13 +285,23 @@ struct parser {
             return std::unexpected(name + " changes its object, and the object is const");
         if (runnable_only && !e->runnable && name != "std::move()" && name != "cbor::key{}") [[unlikely]]
             return std::unexpected(name + " is not run for a completion");
-        return e->run(call{self, targs, args});
+        auto made = e->run(call{self, targs, args});
+        if (made)
+            made->temporary = true;
+        return made;
+    }
+
+    static std::expected<void, fault> temporary_read_allowed(value const &v, bool const allowed, std::string_view const how)
+    {
+        if (v.temporary && !allowed) [[unlikely]]
+            return std::unexpected(std::string(how) + " on a temporary cbor::result does not compile; name it first: auto const x = ...");
+        return {};
     }
 
     static result unwrapped(value v, std::string_view const how)
     {
         if (v.type == type_of<cbor::error>()) [[unlikely]]
-            return std::unexpected(std::string(how) + " on a std::expected that holds " +
+            return std::unexpected(std::string(how) + " on a cbor::result that holds " +
                                    kind<cbor::error>::text(*held_if<cbor::error>(v)));
         v.expected = false;
         return v;
@@ -301,8 +311,10 @@ struct parser {
     {
         bool const holds_error = self.type == type_of<cbor::error>();
         if (name == "error") {
+            if (auto const ok = temporary_read_allowed(self, self.error_on_temporary, "error()"); !ok) [[unlikely]]
+                return std::unexpected(ok.error());
             if (!holds_error) [[unlikely]]
-                return std::unexpected("error() on a std::expected that holds a value");
+                return std::unexpected("error() on a cbor::result that holds a value");
             value e = self;
             e.expected = false;
             return e;
@@ -314,9 +326,12 @@ struct parser {
                 return std::unexpected("value_or takes one argument");
             return holds_error ? args.front() : unwrapped(self, "value_or");
         }
-        if (name == "value")
+        if (name == "value") {
+            if (auto const ok = temporary_read_allowed(self, self.value_on_temporary, "value()"); !ok) [[unlikely]]
+                return std::unexpected(ok.error());
             return unwrapped(self, "value()");
-        return std::unexpected(name + " is not a member of std::expected; -> reads the value");
+        }
+        return std::unexpected(name + " is not a member of cbor::result; -> reads the value");
     }
 
     result variable_read(std::string const &name, bool &constant) const
@@ -325,7 +340,9 @@ struct parser {
         if (v == s.variables.end()) [[unlikely]]
             return std::unexpected(name + " is not known here");
         constant = v->constant;
-        return v->v;
+        value read = v->v;
+        read.temporary = false;
+        return read;
     }
 
     result enumerator_read(std::string_view const name, std::string_view const prefix,
@@ -344,8 +361,11 @@ struct parser {
             auto v = postfix_read(constant);
             if (!v) [[unlikely]]
                 return v;
-            if (v->expected)
+            if (v->expected) {
+                if (auto const ok = temporary_read_allowed(*v, v->star_on_temporary, "*"); !ok) [[unlikely]]
+                    return std::unexpected(ok.error());
                 return unwrapped(*v, "*");
+            }
             return called(std::string(v->kind) + ".operator*()", &*v, {}, {}, false);
         }
         if (consumed("(")) {
@@ -446,6 +466,8 @@ struct parser {
         while (v) {
             if (consumed("->")) {
                 if (v->expected) {
+                    if (auto const ok = temporary_read_allowed(*v, v->arrow_on_temporary, "->"); !ok) [[unlikely]]
+                        return std::unexpected(ok.error());
                     v = unwrapped(std::move(*v), "->");
                 } else {
                     v = called(std::string(v->kind) + ".operator->()", &*v, {}, {}, constant);
@@ -464,7 +486,7 @@ struct parser {
                     return std::unexpected(a.error());
                 }
                 if (v->expected) [[unlikely]]
-                    return std::unexpected("[] on a std::expected; *x or x-> reads the value");
+                    return std::unexpected("[] on a cbor::result; *x or x-> reads the value");
                 v = called(std::string(v->kind) + ".operator[]()", &*v, {}, *a, constant);
             } else {
                 return v;
@@ -775,12 +797,16 @@ inline std::vector<std::string> continuations(session &s, value const &v)
     if (v.expected) {
         if (v.type == type_of<cbor::error>())
             return {};
+        if (v.temporary && !v.arrow_on_temporary)
+            return {};
         object.expected = false;
         step = "->";
     }
     if (entry const *const arrow = entry_named(s, std::string(object.kind) + ".operator->()"); arrow && arrow->runnable) {
         auto const target = arrow->run(call{&object, {}, {}});
         if (!target)
+            return {};
+        if (v.expected && v.temporary && !v.value_on_temporary)
             return {};
         step = v.expected ? ".value()->" : "->";
         object = *target;

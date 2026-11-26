@@ -44,10 +44,6 @@ inline result item_get(call const &c)
         return std::unexpected(ok.error());
     if (c.template_arguments.size() != 1) [[unlikely]]
         return std::unexpected("get takes one type: get<std::int64_t>()");
-    if (c.template_arguments.front() == kind<cbor::array_range>::name)
-        return expected_view_of(*c.self, node->get<cbor::array_range>());
-    if (c.template_arguments.front() == kind<cbor::map_range>::name)
-        return expected_view_of(*c.self, node->get<cbor::map_range>());
     if (c.template_arguments.front() == kind<std::pair<std::uint64_t, cbor::item>>::name)
         return expected_view_of(*c.self, node->get<std::pair<std::uint64_t, cbor::item>>());
     return typed(c.template_arguments.front(), [&]<class T>(type_tag<T>) -> result {
@@ -56,6 +52,30 @@ inline result item_get(call const &c)
         else
             return std::unexpected("cbor::item.get does not take " + c.template_arguments.front());
     });
+}
+
+inline result item_elements_of(call const &c)
+{
+    if (c.self == nullptr) [[unlikely]]
+        return std::unexpected("the call needs an object of its class");
+    auto const node = node_of(*c.self);
+    if (!node) [[unlikely]]
+        return std::unexpected(node.error());
+    if (auto const ok = arguments_counted(c, 0); !ok) [[unlikely]]
+        return std::unexpected(ok.error());
+    return expected_view_of(*c.self, node->elements());
+}
+
+inline result item_pairs_of(call const &c)
+{
+    if (c.self == nullptr) [[unlikely]]
+        return std::unexpected("the call needs an object of its class");
+    auto const node = node_of(*c.self);
+    if (!node) [[unlikely]]
+        return std::unexpected(node.error());
+    if (auto const ok = arguments_counted(c, 0); !ok) [[unlikely]]
+        return std::unexpected(ok.error());
+    return expected_view_of(*c.self, node->pairs());
 }
 
 inline result item_type_of(call const &c)
@@ -341,10 +361,14 @@ inline constexpr entry decode_functions[] = {
     {.name = "cbor::item.get()", .run = item_get, .candidates = item_get_candidates, .runnable = true},
     {.name = "cbor::item.type()", .run = item_type_of, .runnable = true},
     {.name = "cbor::item const *.type()", .run = item_type_of, .runnable = true},
-    {.name = "cbor::array_range.size()", .run = view_size<cbor::array_range>, .runnable = true},
-    {.name = "cbor::array_range.front()", .run = range_front<cbor::array_range>, .runnable = true},
-    {.name = "cbor::map_range.size()", .run = view_size<cbor::map_range>, .runnable = true},
-    {.name = "cbor::map_range.front()", .run = range_front<cbor::map_range>, .runnable = true},
+    {.name = "cbor::item.elements()", .run = item_elements_of, .runnable = true},
+    {.name = "cbor::item const *.elements()", .run = item_elements_of, .runnable = true},
+    {.name = "cbor::item.pairs()", .run = item_pairs_of, .runnable = true},
+    {.name = "cbor::item const *.pairs()", .run = item_pairs_of, .runnable = true},
+    {.name = "elements.size()", .run = view_size<item_elements>, .runnable = true},
+    {.name = "elements.front()", .run = range_front<item_elements>, .runnable = true},
+    {.name = "pairs.size()", .run = view_size<item_pairs>, .runnable = true},
+    {.name = "pairs.front()", .run = range_front<item_pairs>, .runnable = true},
     {.name = "std::pair<cbor::item, cbor::item>.first", .run = entry_key, .runnable = true},
     {.name = "std::pair<cbor::item, cbor::item>.second", .run = entry_value, .runnable = true},
     {.name = "cbor::item const *.additional_information()", .run = item_additional_information, .runnable = true},

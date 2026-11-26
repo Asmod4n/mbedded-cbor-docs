@@ -30,6 +30,9 @@ inline std::string item_notation(cbor::item const node)
 
 inline std::string lazy_notation(cbor::lazy const &node)
 {
+    auto const encoded = node.encoded();
+    if (auto const size = cbor::item_size(encoded))
+        return notation_of(encoded.substr(0, *size));
     auto const tree = node.to_item();
     if (!tree) [[unlikely]]
         return kind<cbor::error>::text(tree.error());
@@ -72,8 +75,7 @@ struct kind<std::span<std::byte const>> {
     static constexpr std::string_view name = "std::span<std::byte const>";
     static std::string text(std::span<std::byte const> const v)
     {
-        return number_text(v.size()) + " bytes: " +
-               hex_text(v);
+        return byte_count_text(v.size()) + hex_text(v);
     }
 };
 
