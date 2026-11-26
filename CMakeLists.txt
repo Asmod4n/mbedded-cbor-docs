@@ -5,9 +5,10 @@ include(FetchContent)
 include(CTest)
 include(GNUInstallDirs)
 
+set(DOCS_CBOR_TAG main CACHE STRING "The branch or the commit of mbedded-cbor that the docs are made from")
 FetchContent_Declare(mbedded_cbor
   GIT_REPOSITORY https://github.com/Asmod4n/mbedded-cbor.git
-  GIT_TAG main
+  GIT_TAG ${DOCS_CBOR_TAG}
   SOURCE_SUBDIR no-cmake-project)
 FetchContent_Declare(mustache
   GIT_REPOSITORY https://github.com/Asmod4n/mbedded-mustache.git
@@ -89,6 +90,9 @@ add_custom_command(
 
 execute_process(COMMAND git -C ${mbedded_cbor_SOURCE_DIR} log -1 --format=%cs OUTPUT_VARIABLE DOCS_COMMIT_DATE OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
 execute_process(COMMAND git -C ${mbedded_cbor_SOURCE_DIR} log -1 --format=%h OUTPUT_VARIABLE DOCS_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
+execute_process(COMMAND git -C ${mbedded_cbor_SOURCE_DIR} rev-parse HEAD OUTPUT_VARIABLE DOCS_COMMIT_FULL OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
+message(STATUS "mbedded-cbor ${DOCS_COMMIT_FULL}")
+file(WRITE ${CMAKE_BINARY_DIR}/site/commit.txt "${DOCS_COMMIT_FULL}\n")
 file(READ ${mbedded_cbor_SOURCE_DIR}/CMakeLists.txt DOCS_CBOR_CMAKE)
 string(REGEX MATCH "project\\(mbedded-cbor VERSION ([0-9.]+)" DOCS_CBOR_PROJECT "${DOCS_CBOR_CMAKE}")
 set(DOCS_CBOR_VERSION ${CMAKE_MATCH_1})

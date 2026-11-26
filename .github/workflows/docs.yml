@@ -13,14 +13,52 @@ on:
       - 'test/**'
       - 'containers/docs.Containerfile'
       - '.github/workflows/docs.yml'
+  schedule:
+    - cron: '17 * * * *'
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  build:
+  follow:
     runs-on: ubuntu-24.04
+    outputs:
+      build: ${{ steps.decide.outputs.build }}
+      sha: ${{ steps.green.outputs.sha }}
+    steps:
+      - id: green
+        if: github.event_name != 'push' || github.ref == 'refs/heads/main'
+        name: Read the newest commit of mbedded-cbor main with a green CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(gh api -X GET repos/Asmod4n/mbedded-cbor/actions/workflows/code.yml/runs -f branch=main -f status=success -f per_page=1 --jq '.workflow_runs[0].head_sha')
+          test "${#sha}" -eq 40
+          echo "mbedded-cbor $sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - id: seen
+        if: steps.green.outputs.sha != ''
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ runner.temp }}/follow/sha
+          key: follow-${{ steps.green.outputs.sha }}-${{ github.sha }}
+          lookup-only: true
+      - id: decide
+        name: Build unless this pair of commits was built or failed in the build
+        run: echo "build=${{ steps.seen.outputs.cache-hit != 'true' }}" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: follow
+    if: needs.follow.outputs.build == 'true'
+    name: build ${{ needs.follow.outputs.sha }}
+    runs-on: ubuntu-24.04
+    outputs:
+      configured: ${{ steps.configured.outputs.configured }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -43,15 +81,46 @@ jobs:
       - if: steps.image.outputs.cache-hit == 'true'
         name: Load the image
         run: podman load -q -i "$RUNNER_TEMP/image-docs/image.tar"
+      - name: Configure
+        env:
+          TAG: ${{ needs.follow.outputs.sha != '' && format('-DDOCS_CBOR_TAG={0}', needs.follow.outputs.sha) || '' }}
+        run: |
+          podman run --rm -v "$PWD":/work -w /work -e TAG mbedded-cbor-docs sh -ec '
+            cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=g++-16 $TAG'
+      - id: configured
+        run: echo "configured=true" >> "$GITHUB_OUTPUT"
       - name: Build and test the site
         run: |
           podman run --rm -v "$PWD":/work -w /work mbedded-cbor-docs sh -ec '
-            cmake -S . -B build -G Ninja -DCMAKE_CXX_COMPILER=g++-16
             cmake --build build
             ctest --test-dir build --output-on-failure'
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with:
           path: build/site
+      - if: needs.follow.outputs.sha != ''
+        name: Write the marker of this pair of commits
+        run: |
+          mkdir -p "$RUNNER_TEMP/follow"
+          echo "${{ needs.follow.outputs.sha }} ${{ github.sha }}" > "$RUNNER_TEMP/follow/sha"
+      - if: needs.follow.outputs.sha != ''
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ runner.temp }}/follow/sha
+          key: follow-${{ needs.follow.outputs.sha }}-${{ github.sha }}
+
+  failed:
+    needs: [follow, build]
+    if: failure() && needs.build.outputs.configured == 'true' && needs.follow.outputs.sha != ''
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Write the marker of this pair of commits
+        run: |
+          mkdir -p "$RUNNER_TEMP/follow"
+          echo "${{ needs.follow.outputs.sha }} ${{ github.sha }}" > "$RUNNER_TEMP/follow/sha"
+      - uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ${{ runner.temp }}/follow/sha
+          key: follow-${{ needs.follow.outputs.sha }}-${{ github.sha }}
 
   deploy:
     needs: build
