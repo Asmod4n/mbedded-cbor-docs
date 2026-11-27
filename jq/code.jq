@@ -15,12 +15,20 @@ def type_lines($spec; $group):
       | [ $used[] | .struct ] + [ $used[] | .description[] ]
     end;
 def literal_using($spec): if ($spec.calls | any(.call | test("_edn\\b"))) then ["using namespace cbor::literals;"] else [] end;
+def byte_count($hex): ($hex | hex_bytes | length) as $n | ($n | tostring) + (if $n == 1 then " byte: " else " bytes: " end) + $hex;
+def raw_delimiter($text): if ($text | contains(")\"")) then "cbor" else "" end;
+def bytes_lines($spec; $item):
+  if $spec.message != null then
+    raw_delimiter($spec.message) as $d
+    | ["std::string bytes = *cbor::diag2cbor(R\"" + $d + "(" + $spec.message + ")" + $d + "\");  // " + byte_count($item.hex)]
+  else
+    literal_lines($item.hex) as $lits
+    | (if ($item.notation // "") == "" then "" else "  // " + $item.notation end) as $comment
+    | ["using namespace std::string_literals;", "std::string bytes =" + $comment]
+    + ($lits | to_entries | map(.value + (if .key == (($lits | length) - 1) then "s;" else "" end)))
+  end;
 def data_lines($spec; $item; $group):
-  literal_lines($item.hex) as $lits
-  | (if ($item.notation // "") == "" then "" else "  // " + $item.notation end) as $comment
-  | (["std::string bytes ="] | .[0] += $comment) as $head
-  | type_lines($spec; $group) + ["using namespace std::string_literals;"] + literal_using($spec) + $head
-  + ($lits | to_entries | map(.value + (if .key == (($lits | length) - 1) then "s;" else "" end)))
+  type_lines($spec; $group) + literal_using($spec) + bytes_lines($spec; $item)
   + (if uses($spec.calls; "doc")
      then ["auto const doc = cbor::lazy::adopt(" + (if uses($spec.calls; "bytes") then "std::string{bytes}" else "std::move(bytes)" end) + ");"]
      else [] end);

@@ -55,6 +55,12 @@ const literalBytes = text => {
   }
   return Uint8Array.from(out);
 };
+const ednOf = text => text.match(/diag2cbor\(R"(\w*)\(([\s\S]*?)\)\1"\)/);
+const headBytes = async lines => {
+  const edn = ednOf(lines.join("\n"));
+  if (edn) return (await module).diag2cbor(edn[2]);
+  return literalBytes([lines[0].replace(/\s*\/\/.*$/, ""), ...lines.slice(1)].join("\n"));
+};
 const dataLength = lines => {
   const start = lines.findIndex(l => /^std::string bytes =/.test(l));
   if (start < 0) throw new Error("the example starts with std::string bytes = followed by the bytes as a string literal");
@@ -78,7 +84,7 @@ const played = async pre => {
     const adopt = /^auto const doc = cbor::lazy::adopt\(/.test(lines[end] ?? "") ? 1 : 0;
     head = lines.slice(0, end + adopt);
     calls = lines.slice(end + adopt).map(l => l.replace(resultTail, ""));
-    results = await (await run)(literalBytes([lines[start].replace(/\s*\/\/.*$/, ""), ...lines.slice(start + 1, end)].join("\n")), calls.map(c => c.replace(/;\s*$/, "")).join("\n"), group);
+    results = await (await run)(await headBytes(lines.slice(start, end)), calls.map(c => c.replace(/;\s*$/, "")).join("\n"), group);
   } catch (e) {
     head = lines.slice(0, 1);
     calls = lines.slice(1).map(l => l.replace(resultTail, ""));

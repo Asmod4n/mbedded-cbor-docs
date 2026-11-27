@@ -1,6 +1,6 @@
 // Compiles every example that a page shows, as a reader copies it into a program: the types and their descriptions at
-// global scope, once per page, and the lines from the using-directive on in one function per example. The examples
-// exist to be copied, so an example that does not compile is a fault of the docs.
+// global scope, once per page, and the lines from the first using-directive or the bytes on, in one function per
+// example. The examples exist to be copied, so an example that does not compile is a fault of the docs.
 import { readFileSync, writeFileSync, mkdtempSync, readdirSync } from "node:fs";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -23,8 +23,8 @@ for (const page of readdirSync(site).filter(f => f.endsWith(".html"))) {
   const global = [];
   const bodies = [];
   blocks.forEach((lines, i) => {
-    const start = lines.findIndex(l => l.startsWith("using namespace std::string_literals;"));
-    if (start < 0) throw new Error(`${page}: example ${i + 1} has no using-directive`);
+    const start = lines.findIndex(l => l.startsWith("using namespace ") || l.startsWith("std::string bytes ="));
+    if (start < 0) throw new Error(`${page}: example ${i + 1} has no std::string bytes`);
     const head = lines.slice(0, start);
     for (let j = 0; j < head.length; j++) {
       let block = head[j];
