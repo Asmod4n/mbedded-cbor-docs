@@ -29,15 +29,18 @@
     },
     {
       "name": "ref",
-      "title": "results that hold the bytes they point into"
+      "title": "results that hold the bytes they point into",
+      "types": "reference_ref"
     },
     {
       "name": "schema",
-      "title": "structs as Packed CBOR, with fields at fixed offsets"
+      "title": "structs as Packed CBOR, with fields at fixed offsets",
+      "types": "doc_reference_schema"
     },
     {
       "name": "structs",
-      "title": "any CBOR into a C++ struct and back"
+      "title": "any CBOR into a C++ struct and back",
+      "types": "reference_structs"
     },
     {
       "name": "tools",

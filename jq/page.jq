@@ -4,7 +4,7 @@ include "example";
 include "dedupe";
 include "html";
 include "code";
-def man_entry($examples; $bytes): (spec) as $s | example_item($examples; $bytes; .qname) as $item | if $s == null or $item == null then . else . + {example: (plain_code($s; $item; man_width) | join("\n"))} end;
+def man_entry($examples; $bytes): (spec) as $s | example_item($examples; $bytes; .qname) as $item | if $s == null or $item == null then . else . + {example: (plain_code($s; $item; man_width; .group) | join("\n"))} end;
 def listed: [ $groups[0].groups[] | {name, title} ];
 def marked: $ARGS.named.marked | split("\u001e");
 . as $docs

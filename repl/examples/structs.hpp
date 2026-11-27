@@ -162,6 +162,10 @@ inline result encode_called(call const &c)
         return value_encoded<reference_structs::trailer>(c);
     if (t == "device")
         return value_encoded<reference_structs::device>(c);
+    if (t == "line")
+        return value_encoded<reference_structs::line>(c);
+    if (t == "node")
+        return value_encoded<reference_structs::node>(c);
     if (t == "std::set<std::uint8_t>")
         return value_encoded<std::set<std::uint8_t>>(c);
     return std::unexpected(std::string(t) + " is not a type known here");
@@ -263,6 +267,8 @@ inline constexpr entry structs_functions[] = {
     {"reading{}", aggregate_made<reference_structs::reading, std::uint8_t, std::optional<std::uint8_t>>},
     {"trailer{}", aggregate_made<reference_structs::trailer, std::uint8_t>},
     {"device{}", aggregate_made<reference_structs::device, std::string, std::uint8_t>},
+    {"line{}", aggregate_made<reference_structs::line, doc_reference_schema::point, doc_reference_schema::point>},
+    {"node{}", aggregate_made<reference_structs::node, std::string, std::vector<reference_structs::node>>},
     {"cbor::has_describe_members", has_describe_members_read},
     {"cbor::encode()", encode_called},
     {"cbor::to_edn()", edn_called},

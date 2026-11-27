@@ -423,6 +423,8 @@ inline result vector_made(call const &c)
 {
     if (c.template_arguments.size() == 1 && c.template_arguments.front() == "tire")
         return container_made<std::vector<tire>>(c, "tire");
+    if (c.template_arguments.size() == 1 && c.template_arguments.front() == "node")
+        return container_made<std::vector<reference_structs::node>>(c, "node");
     return container_made<std::vector<double>>(c, "double");
 }
 

@@ -250,4 +250,42 @@ struct kind<cbor::typed_array_view<double>::iterator> {
     }
 };
 
+template <>
+struct kind<reference_structs::line> {
+    static constexpr std::string_view name = "line";
+    static std::string text(reference_structs::line const &v)
+    {
+        return "line{" + kind<point>::text(v.from) + ", " + kind<point>::text(v.to) + "}";
+    }
+};
+
+inline std::string node_text(reference_structs::node const &v)
+{
+    std::string out = std::format("node{{{:?}, std::vector<node>{{", v.name);
+    char const *separator = "";
+    for (reference_structs::node const &c : v.children) {
+        out += separator + node_text(c);
+        separator = ", ";
+    }
+    return out + "}}";
+}
+
+template <>
+struct kind<reference_structs::node> {
+    static constexpr std::string_view name = "node";
+    static std::string text(reference_structs::node const &v)
+    {
+        return node_text(v);
+    }
+};
+
+template <>
+struct kind<std::vector<reference_structs::node>> {
+    static constexpr std::string_view name = "std::vector<node>";
+    static std::string text(std::vector<reference_structs::node> const &v)
+    {
+        return node_text(reference_structs::node{"", v}).substr(std::string_view("node{\"\", ").size());
+    }
+};
+
 }

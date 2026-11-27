@@ -8,3 +8,4 @@
 - CBOR_OWNER
 - <h2>cbor::detail
 - <h2></h2>
++ using</span> <span class="keyword">namespace</span> cbor::literals;

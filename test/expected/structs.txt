@@ -8,3 +8,4 @@
 - CBOR_OWNER
 - <h2>cbor::detail
 - <h2></h2>
++ struct</span> line { point from; point to; };

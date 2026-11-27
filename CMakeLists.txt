@@ -63,10 +63,18 @@ add_custom_command(
   COMMENT "The JSON of the comments"
   VERBATIM)
 
+set(DOCS_TYPES ${CMAKE_BINARY_DIR}/types.json)
+add_custom_command(
+  OUTPUT ${DOCS_TYPES}
+  COMMAND ${DOCS_NODE} ${CMAKE_SOURCE_DIR}/repl/types.mjs ${mbedded_cbor_SOURCE_DIR}/test/doc_types.hpp > ${DOCS_TYPES}
+  DEPENDS ${mbedded_cbor_SOURCE_DIR}/test/doc_types.hpp ${CMAKE_SOURCE_DIR}/repl/types.mjs
+  COMMENT "The types of the examples"
+  VERBATIM)
+
 add_custom_command(
   OUTPUT ${DOCS_RECORDS}
-  COMMAND ${DOCS_JQ} -L ${CMAKE_SOURCE_DIR}/jq -j --slurpfile groups ${CMAKE_SOURCE_DIR}/groups.json --slurpfile examples ${DOCS_EXAMPLES} --slurpfile bytes ${DOCS_EXAMPLE_BYTES} ${DOCS_TEST_ARGS} -f ${CMAKE_SOURCE_DIR}/jq/highlight.jq ${DOCS_JSON} > ${DOCS_RECORDS}
-  DEPENDS ${DOCS_JSON} ${DOCS_EXAMPLE_BYTES} ${CMAKE_SOURCE_DIR}/jq/code.jq ${CMAKE_SOURCE_DIR}/jq/highlight.jq ${CMAKE_SOURCE_DIR}/jq/snippet.jq ${CMAKE_SOURCE_DIR}/jq/example.jq ${CMAKE_SOURCE_DIR}/groups.json
+  COMMAND ${DOCS_JQ} -L ${CMAKE_SOURCE_DIR}/jq -j --slurpfile groups ${CMAKE_SOURCE_DIR}/groups.json --slurpfile examples ${DOCS_EXAMPLES} --slurpfile bytes ${DOCS_EXAMPLE_BYTES} --slurpfile types ${DOCS_TYPES} ${DOCS_TEST_ARGS} -f ${CMAKE_SOURCE_DIR}/jq/highlight.jq ${DOCS_JSON} > ${DOCS_RECORDS}
+  DEPENDS ${DOCS_JSON} ${DOCS_EXAMPLE_BYTES} ${DOCS_TYPES} ${CMAKE_SOURCE_DIR}/jq/code.jq ${CMAKE_SOURCE_DIR}/jq/highlight.jq ${CMAKE_SOURCE_DIR}/jq/snippet.jq ${CMAKE_SOURCE_DIR}/jq/example.jq ${CMAKE_SOURCE_DIR}/groups.json
   COMMENT "The records of the C++ to colour"
   VERBATIM)
 add_custom_command(
@@ -142,9 +150,9 @@ foreach(page IN LISTS DOCS_PAGES)
   file(MAKE_DIRECTORY ${page_dir})
   add_custom_command(
     OUTPUT ${page_dir}/data.json
-    COMMAND ${DOCS_JQ} -L ${CMAKE_SOURCE_DIR}/jq --arg date ${DOCS_COMMIT_DATE} --arg source "${DOCS_MAN_SOURCE}" --arg page ${page} --slurpfile groups ${CMAKE_SOURCE_DIR}/groups.json --slurpfile examples ${DOCS_EXAMPLES} --slurpfile bytes ${DOCS_EXAMPLE_BYTES} --rawfile marked ${DOCS_MARKED} ${DOCS_TEST_ARGS}
+    COMMAND ${DOCS_JQ} -L ${CMAKE_SOURCE_DIR}/jq --arg date ${DOCS_COMMIT_DATE} --arg source "${DOCS_MAN_SOURCE}" --arg page ${page} --slurpfile groups ${CMAKE_SOURCE_DIR}/groups.json --slurpfile examples ${DOCS_EXAMPLES} --slurpfile bytes ${DOCS_EXAMPLE_BYTES} --slurpfile types ${DOCS_TYPES} --rawfile marked ${DOCS_MARKED} ${DOCS_TEST_ARGS}
             -f ${CMAKE_SOURCE_DIR}/jq/page.jq ${DOCS_JSON} > ${page_dir}/data.json
-    DEPENDS ${DOCS_JSON} ${DOCS_MARKED} ${DOCS_EXAMPLE_BYTES} ${CMAKE_SOURCE_DIR}/jq/code.jq ${CMAKE_SOURCE_DIR}/jq/dedupe.jq ${CMAKE_SOURCE_DIR}/jq/html.jq ${CMAKE_SOURCE_DIR}/jq/page.jq ${CMAKE_SOURCE_DIR}/jq/man.jq ${CMAKE_SOURCE_DIR}/jq/snippet.jq ${CMAKE_SOURCE_DIR}/jq/example.jq ${CMAKE_SOURCE_DIR}/groups.json
+    DEPENDS ${DOCS_JSON} ${DOCS_MARKED} ${DOCS_EXAMPLE_BYTES} ${DOCS_TYPES} ${CMAKE_SOURCE_DIR}/jq/code.jq ${CMAKE_SOURCE_DIR}/jq/dedupe.jq ${CMAKE_SOURCE_DIR}/jq/html.jq ${CMAKE_SOURCE_DIR}/jq/page.jq ${CMAKE_SOURCE_DIR}/jq/man.jq ${CMAKE_SOURCE_DIR}/jq/snippet.jq ${CMAKE_SOURCE_DIR}/jq/example.jq ${CMAKE_SOURCE_DIR}/groups.json
     COMMENT "The data of the page ${page}"
     VERBATIM)
   add_custom_command(
@@ -262,6 +270,8 @@ target_link_libraries(highlight PRIVATE ${DOCS_CLANG_LIBRARY})
 add_test(NAME highlight_records
   COMMAND ${CMAKE_COMMAND} -DHIGHLIGHT=$<TARGET_FILE:highlight> -DDIR=${CMAKE_SOURCE_DIR}/test/highlight -P ${CMAKE_SOURCE_DIR}/test/check_highlight.cmake)
 
+add_test(NAME examples_compile COMMAND ${DOCS_NODE} ${CMAKE_SOURCE_DIR}/test/check_compile.mjs ${CMAKE_CXX_COMPILER}
+         ${mbedded_cbor_SOURCE_DIR}/include ${DOCS_OUTPUT_DIR} 64)
 add_test(NAME examples_run
   COMMAND ${DOCS_NODE} ${CMAKE_SOURCE_DIR}/test/check_examples.mjs ${DOCS_WASM} ${DOCS_EXAMPLES} ${DOCS_OUTPUT_DIR} ${DOCS_HEADER_DIR}/error.hpp)
 add_test(NAME links_of_the_site COMMAND ${DOCS_NODE} ${CMAKE_SOURCE_DIR}/test/check_links.mjs ${DOCS_OUTPUT_DIR})
