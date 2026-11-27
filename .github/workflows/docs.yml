@@ -13,8 +13,6 @@ on:
       - 'test/**'
       - 'containers/docs.Containerfile'
       - '.github/workflows/docs.yml'
-  schedule:
-    - cron: '17 * * * *'
   workflow_dispatch:
 
 permissions:
