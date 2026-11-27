@@ -5,7 +5,8 @@ def data_lines($spec; $item):
   literal_lines($item.hex) as $lits
   | (if ($item.notation // "") == "" then "" else "  // " + $item.notation end) as $comment
   | (["std::string bytes ="] | .[0] += $comment) as $head
-  | $head + ($lits | to_entries | map(.value + (if .key == (($lits | length) - 1) then ";" else "" end)))
+  | ["using namespace std::string_literals;"] + $head
+  + ($lits | to_entries | map(.value + (if .key == (($lits | length) - 1) then "s;" else "" end)))
   + (if uses($spec.calls; "doc")
      then ["auto const doc = cbor::lazy::adopt(" + (if uses($spec.calls; "bytes") then "std::string{bytes}" else "std::move(bytes)" end) + ");"]
      else [] end);

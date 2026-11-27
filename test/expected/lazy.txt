@@ -8,7 +8,8 @@
 + <script type="module" src="site.js">
 + <pre class="code editable" contenteditable="true"
 + <span class="comment">// {"id": 42}</span>
-+ <span class="literal">"\xa1\x62\x69\x64\x18\x2a"</span>;
++ <span class="literal">"\xa1\x62\x69\x64\x18\x2a"s</span>;
++ std::string_literals;
 + id-&gt;get&lt;std::int64_t&gt;()
 - cbor::lazy::view(owner)-&gt;at(
 + <span class="r comment">// 42</span>
