@@ -12,3 +12,4 @@
 + <span class="keyword">static</span> <span class="keyword">constexpr</span> std::size_t cbor::limits::string_length = CBOR_STRING_LENGTH_DEFAULT
 + <h2 id="errors-of-each-class">Errors of each class</h2>
 + <h3>cbor::lazy</h3>
++ it is not how a program gets its bytes

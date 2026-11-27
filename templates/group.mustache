@@ -1,7 +1,8 @@
 {{>head}}
 <h1>{{name}}</h1>
 {{#has_snippet}}<pre>{{{snippet_html}}}</pre>
-{{/has_snippet}}<table>
+{{/has_snippet}}<p class="text">The examples make their bytes from the text of a message with <code>cbor::diag2cbor</code>. That keeps them short; it is not how a program gets its bytes. A program reads them from a file or a socket, or writes them with <code>cbor::encode</code>, and uses <code>cbor::diag2cbor</code> in tests.</p>
+<table>
 {{#entries}}<tr><td><a href="#{{id}}">{{qname}}</a></td><td>{{{brief_html}}}</td></tr>
 {{/entries}}</table>
 {{>entries}}{{>foot}}

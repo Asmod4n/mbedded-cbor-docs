@@ -10,3 +10,4 @@
 - <h2></h2>
 + struct</span> car { std::string make; std::uint8_t seats; std::vector&lt;tire&gt; tires; std::vector&lt;
 + CBOR_DEFINE_TYPE_MEMBERS(car, cbor::tag{<span class="literal">1801</span>}, make, seats, tires
++ it is not how a program gets its bytes
